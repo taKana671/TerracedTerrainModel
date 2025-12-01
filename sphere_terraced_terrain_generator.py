@@ -6,7 +6,7 @@ from functools import reduce
 import numpy as np
 from panda3d.core import Vec3, Point3, Vec2
 
-from shapes import Icosphere
+from shapes import Cubesphere
 from noise import SimplexNoise, PerlinNoise, CellularNoise
 from noise import Fractal2D, Fractal3D
 from themes import themes, Island
@@ -14,7 +14,8 @@ from themes import themes, Island
 from mask.radial_gradient_generator import RadialGradientMask
 
 
-class TerracedTerrainGenerator(Icosphere):
+
+class TerracedTerrainGenerator(Cubesphere):
     """A class to generate a terraced terrain.
         Args:
             noise (func): Function that generates noise.
@@ -41,20 +42,22 @@ class TerracedTerrainGenerator(Icosphere):
         self.octaves = octaves
         self.theme = themes.get(theme.lower())
 
+        self.terrain_scale = 1
+
     @classmethod
-    def from_simplex(cls, scale=10, segs_c=5, radius=3,
+    def from_simplex(cls, scale=15, segs_c=5, radius=3,
                      max_depth=3, octaves=3, theme='mountain'):
         noise = SimplexNoise()
-        noise = Fractal3D(noise.snoise3)
-        # return cls(noise.snoise3, scale, segs_c, radius, max_depth, octaves, theme)
-        return cls(noise.fractal, scale, segs_c, radius, max_depth, octaves, theme)
+        # noise = Fractal3D(noise.snoise3)
+        return cls(noise.snoise3, scale, segs_c, radius, max_depth, octaves, theme)
+        # return cls(noise.fractal, scale, segs_c, radius, max_depth, octaves, theme)
 
         # noise = PerlinNoise()
         # return cls(noise.pnoise3, scale, segs_c, radius, max_depth, octaves, theme)
 
     @classmethod
     def from_perlin(cls, scale=15, segs_c=5, radius=3,
-                    max_depth=6, octaves=6, theme='mountain'):
+                    max_depth=5, octaves=6, theme='mountain'):
         noise = PerlinNoise()
         return cls(noise.pnoise3, scale, segs_c, radius, max_depth, octaves, theme)
 
@@ -93,26 +96,26 @@ class TerracedTerrainGenerator(Icosphere):
 
             yield (pt1, pt2)
 
-    def generate_midpoints(self, tri):
-        """Generates the midpoints of the three sides of a triangle.
-            Args:
-                tri (list): contains vertices(Point3) of a triangle.
-        """
-        for p1, p2 in zip(tri, tri[1:] + tri[:1]):
-            yield (p1 + p2) / 2
+    # def generate_midpoints(self, tri):
+    #     """Generates the midpoints of the three sides of a triangle.
+    #         Args:
+    #             tri (list): contains vertices(Point3) of a triangle.
+    #     """
+    #     for p1, p2 in zip(tri, tri[1:] + tri[:1]):
+    #         yield (p1 + p2) / 2
 
-    def generate_triangles(self, tri, depth=1):
-        if depth == self.max_depth:
-            yield tri
-        else:
-            midpoints = [p for p in self.generate_midpoints(tri)]
+    # def generate_triangles(self, tri, depth=0):
+    #     if depth == self.max_depth:
+    #         yield tri
+    #     else:
+    #         midpoints = [p for p in self.generate_midpoints(tri)]
 
-            for i, vert in enumerate(tri):
-                ii = n if (n := i - 1) >= 0 else len(midpoints) - 1
-                divided = [vert, midpoints[i], midpoints[ii]]
-                yield from self.generate_triangles(divided, depth + 1)
+    #         for i, vert in enumerate(tri):
+    #             ii = n if (n := i - 1) >= 0 else len(midpoints) - 1
+    #             divided = [vert, midpoints[i], midpoints[ii]]
+    #             yield from self.generate_triangles(divided, depth + 1)
 
-            yield from self.generate_triangles(midpoints, depth + 1)
+    #         yield from self.generate_triangles(midpoints, depth + 1)
 
     def get_height(self, x, y, z, t, offsets):
         height = 0
@@ -136,13 +139,16 @@ class TerracedTerrainGenerator(Icosphere):
             frequency *= lacunarity
             amplitude *= persistence
 
+        # print(f'{height=}')
+
         if self.theme == Island:
             r, _, _ = self.mask.get_gradient(x, y)
             height = 0 if r >= height else height - r
         else:
-            if height <= self.theme.LAYER_01.threshold:
-                height = self.theme.LAYER_01.threshold
-
+            # if height < self.theme.LAYER_02.threshold:
+            #     height = self.theme.LAYER_02.threshold
+            if height <= 0.68:
+                height = 0.68
         return height
 
     def generate_hills_and_valleys(self):
@@ -151,27 +157,19 @@ class TerracedTerrainGenerator(Icosphere):
                         random.randint(-1000, 1000),
                         random.randint(-1000, 1000)) for _ in range(self.octaves)]
 
-        vertices, faces = self.load_obj()
+        self.max_depth = 5
 
-        for face in faces:
-            faces_verts = [Vec3(*vertices[n]) * 2 for n in face]
-            center = reduce(lambda x, y: x + y, faces_verts, Vec3()) / 4
+       
+        for subdiv_face in self.generate_triangles():
+            verts = []
+            for i, vert in enumerate(subdiv_face):
+                h = self.get_height(*vert, t, offsets)
 
-            for p1, p2 in zip(faces_verts, faces_verts[1:] + faces_verts[:1]):
-                for subdiv_face in self.generate_triangles([p1, p2, center]):
+                normalized_vert = vert.normalized()
+                v = normalized_vert * (1 + h)
+                verts.append(v)
 
-
-            # for subdiv_face in self.subdivide(faces_verts):
-                # subdiv_face = [vert.normalized() * self.scale for vert in subdiv_face]
-                    verts = []
-                    for vert in subdiv_face:
-                        normalized_vert = vert.normalized()
-
-                        h = self.get_height(*vert, t, offsets)
-                        v = normalized_vert * (1 + h)
-                        verts.append(v)
-
-                    yield verts
+            yield verts
 
 
         # for pt1, pt2 in self.generate_basic_polygon():
@@ -190,85 +188,95 @@ class TerracedTerrainGenerator(Icosphere):
             # Each point's heights above "sea level". For a flat terrain,
             # it's just the vertical component of the respective vector.
 
-            # h1 = v1.z
-            # h2 = v2.z
-            # h3 = v3.z
-
-            h1 = v1.length()
-            h2 = v2.length()
-            h3 = v3.length()
+            h1, h2, h3 = self.get_height2(v1, v2, v3)
+            # h1 = v1.length()
+            # h2 = v2.length()
+            # h3 = v3.length()
 
             li = [int(h_ * 10) for h_ in (h1, h2, h3)]
             # print(li)
             h_min = np.floor(min(li))
             h_max = np.floor(max(li))
 
-            for h in np.arange(h_min, h_max + 1, 0.5):
+            for _h in np.arange(h_min, h_max + 1, 0.5):
                 # indicate triangles above the plane.
-                h *= 0.1
+                # h *= 0.1
+                h = _h * 0.1
                 points_above = 0
 
-                if h1 < h:
-                    if h2 < h:
-                        if h3 >= h:
-                            points_above = 1          # v3 is above.
-                    else:
-                        if h3 < h:
-                            points_above = 1          # v2 is above.
-                            v1, v2, v3 = v3, v1, v2
-                        else:
-                            points_above = 2          # v2 and v3 are above.
+                # if h1 < h:
+                #     if h2 < h:
+                #         if h3 >= h:
+                #             points_above = 1          # v3 is above.
+                #     else:
+                #         if h3 < h:
+                #             points_above = 1          # v2 is above.
+                #             v1, v2, v3 = v3, v1, v2
+                #         else:
+                #             points_above = 2          # v2 and v3 are above.
+                #             v1, v2, v3 = v2, v3, v1
+                # else:
+                #     if h2 < h:
+                #         if h3 < h:
+                #             points_above = 1          # v1 is above.
+                #             v1, v2, v3 = v2, v3, v1
+                #         else:
+                #             points_above = 2          # v1 and v3 are above.
+                #             v1, v2, v3 = v3, v1, v2
+                #     else:
+                #         if h3 < h:
+                #             points_above = 2          # v1 and v2 are above.
+                #         else:
+                #             points_above = 3          # all vectors are above.
+
+                match [val for val in [h1, h2, h3] if val > h]:
+
+                    case [x]:
+                        points_above = 1
+                        if x == h1:
                             v1, v2, v3 = v2, v3, v1
-                else:
-                    if h2 < h:
-                        if h3 < h:
-                            points_above = 1          # v1 is above.
-                            v1, v2, v3 = v2, v3, v1
-                        else:
-                            points_above = 2          # v1 and v3 are above.
+                        elif x == h2:
                             v1, v2, v3 = v3, v1, v2
-                    else:
-                        if h3 < h:
-                            points_above = 2          # v1 and v2 are above.
-                        else:
-                            points_above = 3          # all vectors are above.
+
+                    case [x, y]:
+                        points_above = 2
+                        if x == h2 and y == h3:
+                            v1, v2, v3 = v2, v3, v1
+                        elif x == h1 and y == h3:
+                            v1, v2, v3 = v3, v1, v2
+
+                    case [_, _, _]:
+                        points_above = 3
 
                 # h1, h2, h3 = v1.z, v2.z, v3.z
-                h1 = v1.length()
-                h2 = v2.length()
-                h3 = v3.length()
+                h1, h2, h3 = self.get_height2(v1, v2, v3)
+                # h1 = v1.length()
+                # h2 = v2.length()
+                # h3 = v3.length()
 
                 # for each point of the triangle, we also need its projections
                 # to the current plane and the plane below. Just set its vertical component to the plane's height.
 
                 # current plane
-                # v1_c = Point3(v1.x, v1.y, h)
-                # v2_c = Point3(v2.x, v2.y, h)
-                # v3_c = Point3(v3.x, v3.y, h)
-                v1_c = (v1 / h1) * h
-                v2_c = (v2 / h2) * h
-                v3_c = (v3 / h3) * h
+                v1_c, v2_c, v3_c = self.get_current_plane((v1, v2, v3), (h1, h2, h3), h)
+                # v1_c = (v1 / h1) * h
+                # v2_c = (v2 / h2) * h
+                # v3_c = (v3 / h3) * h
 
                 # generate mesh polygons for each of the three cases.
                 if points_above == 3:
                     # add one triangle.
-                    # import pdb; pdb.set_trace()
-                    color = self.theme.color(h - 1)
-                    self.create_triangle_vertices([v1_c, v2_c, v3_c], color, vdata_values)
+                    # color = self.theme.color(h - 1)
+                    self.create_triangle_vertices([v1_c, v2_c, v3_c], h, vdata_values)
                     prim_indices.extend([vertex_cnt, vertex_cnt + 1, vertex_cnt + 2])
                     vertex_cnt += 3
                     continue
 
                 # the plane below; used to make vertical walls between planes.
-                # v1_b = Point3(v1.x, v1.y, h - 0.05)
-                # v2_b = Point3(v2.x, v2.y, h - 0.05)
-                # v3_b = Point3(v3.x, v3.y, h - 0.05)
-
-                v1_b = (v1 / h1) * (h - 0.05)
-                v2_b = (v2 / h2) * (h - 0.05)
-                v3_b = (v3 / h3) * (h - 0.05)
-
-               
+                # v1_b = (v1 / h1) * (h - 0.05)
+                # v2_b = (v2 / h2) * (h - 0.05)
+                # v3_b = (v3 / h3) * (h - 0.05)
+                v1_b, v2_b, v3_b = self.get_plane_below((v1, v2, v3), (h1, h2, h3), h)
 
                 # find locations of new points that are located on the sides of the triangle's projections,
                 # by interpolating between vectors based on their heights.
@@ -288,9 +296,8 @@ class TerracedTerrainGenerator(Icosphere):
                 v2_b_n = self.lerp(v2_b, v3_b, t2)
 
                 if points_above == 2:
-                    # print('points_above=2: ', v1_c.length())
-                    # import pdb; pdb.set_trace()
                     color = self.theme.color(h - 1)
+
                     # add roof part of the step
                     quad = [v1_c, v2_c, v2_c_n, v1_c_n]
                     self.create_quad_vertices(quad, color, vdata_values, wall=False)
@@ -306,11 +313,10 @@ class TerracedTerrainGenerator(Icosphere):
                     vertex_cnt += 4
 
                 elif points_above == 1:
-                    # print('points_above=1: ', v3_c.length())
-                    # import pdb; pdb.set_trace()
                     color = self.theme.color(h - 1)
+
                     # add roof part of the step
-                    self.create_triangle_vertices([v3_c, v1_c_n, v2_c_n], color, vdata_values)
+                    self.create_triangle_vertices([v3_c, v1_c_n, v2_c_n], h, vdata_values)
 
                     # self.create_triangle_vertices(tri, vdata_values)
                     prim_indices.extend([vertex_cnt, vertex_cnt + 1, vertex_cnt + 2])
@@ -325,33 +331,66 @@ class TerracedTerrainGenerator(Icosphere):
 
         return vertex_cnt
 
-    def create_triangle_vertices(self, tri, color, vdata_values):
-        normal = Vec3(0, 0, 1)
+    def create_triangle_vertices(self, tri, color_thresh, vdata_values):
+        # normal = Vec3(0, 0, 1)
 
         for vert in tri:
-            vdata_values.extend(vert)
-            vdata_values.extend(color)
-            vdata_values.extend(normal)
-            u, v = self.calc_uv(vert.x, vert.y)
-            vdata_values.extend((u, v))
+            vertex = vert * self.terrain_scale
+            normal = vert.normalized()
+            color = self.get_color(color_thresh)
+            uv = self.calc_uv(normal)
+
+            vdata_values.extend([*vertex, *color, *normal, *uv])
+
+            # vdata_values.extend(vert)
+            # vdata_values.extend(color)
+            # vdata_values.extend(normal)
+            # u, v = self.calc_uv(vert.x, vert.y)
+            # vdata_values.extend((u, v))
 
     def create_quad_vertices(self, quad, color, vdata_values, wall=False):
-        normal = Vec3(0, 0, 1)
+        # normal = Vec3(0, 0, 1)
+        normal = None
 
-        for vert in quad:
+        if wall:
+            total = Vec3()
+            for i, vert in enumerate(quad):
+                before_i = 3 if i == 0 else i - 1
+                next_i = 0 if i == 3 else i + 1
+
+                v1 = quad[next_i] - vert
+                v2 = quad[before_i] - vert
+
+                normal = v2.cross(v1)  # .normalized()
+                total += normal
+
+            wall_normal = (total / 4).normalized()
+
+        for i, vert in enumerate(quad):
             if wall:
-                normal = Vec3(vert.x, vert.y, 0).normalized()
+                normal = wall_normal
+                # before_i = 3 if i == 0 else i - 1
+                # next_i = 0 if i == 3 else i + 1
+
+                # v1 = quad[next_i] - vert
+                # v2 = quad[before_i] - vert
+
+                # normal = v2.cross(v1).normalized()
+                # print(normal)
+            else:
+                normal = vert.normalized()
 
             vdata_values.extend(vert)
             vdata_values.extend(color)
             vdata_values.extend(normal)
-            u, v = self.calc_uv(vert.x, vert.y)
+            # u, v = self.calc_uv(vert.x, vert.y)
+            u, v = self.calc_uv(normal)
             vdata_values.extend((u, v))
 
-    def calc_uv(self, x, y):
-        u = 0.5 + x / self.radius * 0.5
-        v = 0.5 + y / self.radius * 0.5
-        return u, v
+    # def calc_uv(self, x, y):
+    #     u = 0.5 + x / self.radius * 0.5
+    #     v = 0.5 + y / self.radius * 0.5
+    #     return u, v
 
     def lerp(self, start, end, t):
         """Args
@@ -360,6 +399,18 @@ class TerracedTerrainGenerator(Icosphere):
             t: Interpolation rate; between 0.0 and 1.0
         """
         return start + (end - start) * t
+
+    def get_height2(self, v1, v2, v3):
+        return v1.length(), v2.length(), v3.length()
+
+    def get_current_plane(self, vertices, vector_lengths, h):
+        return [(v / l) * h for v, l in zip(vertices, vector_lengths)]
+
+    def get_plane_below(self, vertices, vector_lengths, h):
+        return [(v / l) * (h - 0.05) for v, l in zip(vertices, vector_lengths)]
+
+    def get_color(self, thresh):
+        return self.theme.color(thresh - 1)
 
     def get_geom_node(self):
         vdata_values = array.array('f', [])

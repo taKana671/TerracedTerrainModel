@@ -16,7 +16,8 @@ from panda3d.core import AntialiasAttrib
 
 
 from gui import Gui
-from terraced_terrain_generator import TerracedTerrainGenerator
+# from terraced_terrain_generator import TerracedTerrainGenerator
+from sphere_terraced_terrain_generator import TerracedTerrainGenerator
 from themes import themes
 
 # Without 'framebuffer-multisample' and 'multisamples' settings,

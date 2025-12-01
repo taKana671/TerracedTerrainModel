@@ -1,6 +1,7 @@
 import array
 import math
 import random
+import copy
 
 import numpy as np
 from panda3d.core import Vec3, Point3, Vec2
@@ -138,7 +139,10 @@ class TerracedTerrainGenerator(ProceduralGeometry):
                         random.randint(-1000, 1000)) for _ in range(self.octaves)]
 
         for pt1, pt2 in self.generate_basic_polygon():
-            for tri in self.generate_triangles([pt1, pt2, self.center]):
+            # for tri in self.generate_triangles([pt1, pt2, self.center]):
+            for tmp in self.generate_triangles([pt1, pt2, self.center]):
+
+                tri = copy.deepcopy(tmp)
                 for vert in tri:
                     z = self.get_height(vert.x, vert.y, t, offsets)
                     vert.z = z
@@ -190,6 +194,8 @@ class TerracedTerrainGenerator(ProceduralGeometry):
                         else:
                             points_above = 3          # all vectors are above.
 
+               
+
                 h1, h2, h3 = v1.z, v2.z, v3.z
                 # for each point of the triangle, we also need its projections
                 # to the current plane and the plane below. Just set its vertical component to the plane's height.
@@ -202,7 +208,10 @@ class TerracedTerrainGenerator(ProceduralGeometry):
                 # generate mesh polygons for each of the three cases.
                 if points_above == 3:
                     # add one triangle.
-                    color = self.theme.color(v1_c.z)
+                    # color = self.theme.color(v1_c.z)
+                    color = self.theme.color(h)
+
+
                     self.create_triangle_vertices([v1_c, v2_c, v3_c], color, vdata_values)
                     prim_indices.extend([vertex_cnt, vertex_cnt + 1, vertex_cnt + 2])
                     vertex_cnt += 3
@@ -231,7 +240,8 @@ class TerracedTerrainGenerator(ProceduralGeometry):
                 v2_b_n = self.lerp(v2_b, v3_b, t2)
 
                 if points_above == 2:
-                    color = self.theme.color(v1_c.z)
+                    # color = self.theme.color(v1_c.z)
+                    color = self.theme.color(h)
                     # add roof part of the step
                     quad = [v1_c, v2_c, v2_c_n, v1_c_n]
                     self.create_quad_vertices(quad, color, vdata_values, wall=False)
@@ -247,7 +257,8 @@ class TerracedTerrainGenerator(ProceduralGeometry):
                     vertex_cnt += 4
 
                 elif points_above == 1:
-                    color = self.theme.color(v3_c.z)
+                    # color = self.theme.color(v3_c.z)
+                    color = self.theme.color(h)
                     # add roof part of the step
                     self.create_triangle_vertices([v3_c, v1_c_n, v2_c_n], color, vdata_values)
 
@@ -268,6 +279,10 @@ class TerracedTerrainGenerator(ProceduralGeometry):
         normal = Vec3(0, 0, 1)
 
         for vert in tri:
+            # norm = vert.normalized() * 2
+            # vert = norm * (1 + vert.z)    
+            # vdata_values.extend(vert)
+
             vdata_values.extend(vert)
             vdata_values.extend(color)
             vdata_values.extend(normal)
@@ -280,6 +295,10 @@ class TerracedTerrainGenerator(ProceduralGeometry):
         for vert in quad:
             if wall:
                 normal = Vec3(vert.x, vert.y, 0).normalized()
+
+            # norm = vert.normalized() * 2
+            # vert = norm * (1 + vert.z)    
+            # vdata_values.extend(vert)
 
             vdata_values.extend(vert)
             vdata_values.extend(color)
