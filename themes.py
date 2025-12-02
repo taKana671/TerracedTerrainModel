@@ -16,13 +16,15 @@ class Theme(Enum):
 
 class Mountain(Theme):
 
-    # LAYER_01 = ([25, 47, 96, 255], 0.5)    # iron blue
+    # for flat
+    # LAYER_01 = ([25, 47, 96, 255], 0.55)    # iron blue
     # LAYER_02 = ([38, 73, 157, 255], 0.6)   # oriental blue
     # LAYER_03 = ([111, 84, 54, 255], 0.63)  # burnt umber
     # LAYER_04 = ([0, 51, 25, 255], 0.8)
     # LAYER_05 = ([0, 102, 49, 255], 1.0)
     # LAYER_06 = ([0, 133, 54, 255], None)
 
+    # for sphere
     LAYER_01 = ([25, 47, 96, 255], 0.68)    # iron blue
     LAYER_02 = ([38, 73, 157, 255], 0.73)   # oriental blue
     LAYER_03 = ([111, 84, 54, 255], 0.75)  # burnt umber
@@ -96,6 +98,12 @@ class Desert(Theme):
 
 
 class Island(Theme):
+
+    # LAYER_01 = ([0, 104, 183, 255], 0.0)
+    # LAYER_02 = ([255, 247, 153, 255], 0.15)
+    # LAYER_03 = ([128, 120, 92, 255], 0.22)
+    # LAYER_04 = ([0, 102, 46, 255], 0.4)
+    # LAYER_05 = ([0, 128, 57, 255], None)
 
     LAYER_01 = ([0, 104, 183, 255], 0.0)
     LAYER_02 = ([255, 247, 153, 255], 0.15)

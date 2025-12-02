@@ -1,370 +1,258 @@
-import sys
+import numpy as np
+import array
 import math
-from enum import Enum, auto
-from datetime import datetime
+import random
+import copy
 
-from direct.gui.DirectWaitBar import DirectWaitBar
-from direct.showbase.ShowBase import ShowBase
-from direct.showbase.ShowBaseGlobal import globalClock
-from direct.stdpy import threading
-from panda3d.core import Vec3, Vec2, Point3, LColor, Vec4
-from panda3d.core import AmbientLight, DirectionalLight
-from panda3d.core import NodePath
-from panda3d.core import load_prc_file_data
-from panda3d.core import OrthographicLens, Camera, MouseWatcher, PGTop
-from panda3d.core import AntialiasAttrib
+import numpy as np
+from panda3d.core import Vec3, Point3, Vec2
 
 
-from gui import Gui
-# from terraced_terrain_generator import TerracedTerrainGenerator
-from sphere_terraced_terrain_generator import TerracedTerrainGenerator
-from themes import themes
+class TerracedTerrainMixin:
 
-# Without 'framebuffer-multisample' and 'multisamples' settings,
-# there appears to be no effect of 'set_antialias(AntialiasAttrib.MAuto)'.
-load_prc_file_data("", """
-    win-size 1200 600
-    window-title TerracedTerrain
-    framebuffer-multisample 1
-    multisamples 2
-    """)
+    def meandering_triangles(self, vertices, index_offset, vdata_values, prim_indices):
+        vertex_cnt = 0
 
+        # Each point's heights above "sea level".
+        v1, v2, v3 = vertices
+        h1, h2, h3 = self.get_height(v1, v2, v3)
 
-class Status(Enum):
+        li = [int(h_ * 10) for h_ in (h1, h2, h3)]
+        h_min = np.floor(min(li))
+        h_max = np.floor(max(li))
 
-    DISPLAYING = auto()
-    REMOVE = auto()
-    CREATE = auto()
-    SETUP = auto()
-    WAIT = auto()
-    FINISH = auto()
+        for h in np.arange(h_min, h_max + 1, 0.5):
+            h *= 0.1
+            points_above = 0
 
+            # Indicate triangles above the plane.
+            match [val for val in [h1, h2, h3] if val > h]:
 
-class Progress(DirectWaitBar):
+                case [x]:
+                    points_above = 1
+                    if x == h1:
+                        v1, v2, v3 = v2, v3, v1
+                    elif x == h2:
+                        v1, v2, v3 = v3, v1, v2
 
-    def __init__(self, parent=None):
-        self.range_max = 50
-        self.bar_color = (1, 1, 1, 1)
+                case [x, y]:
+                    points_above = 2
+                    if x == h2 and y == h3:
+                        v1, v2, v3 = v2, v3, v1
+                    elif x == h1 and y == h3:
+                        v1, v2, v3 = v3, v1, v2
 
-        super().__init__(
-            parent=parent,
-            text='generating...',
-            text_fg=self.bar_color,
-            text_scale=0.05,
-            text_pos=(0, 0.05, 0),
-            range=self.range_max,
-            value=0,
-            barColor=self.bar_color,
-            frameSize=(-0.3, 0.3, 0, 0.025),
-            pos=(0.3, 0.5, 0.0)
-        )
-        self.initialiseoptions(type(self))
-        self.updateBarStyle()
+                case [_, _, _]:
+                    points_above = 3
 
-    def update_progress(self):
-        if self['value'] > self.range_max:
-            self['value'] -= self.range_max
-        else:
-            self['value'] += 1
+            # For each point of the triangle, need its projections to the current plane and the plane below.
+            # Just set its vertical component to the plane's height.
 
-    def finish(self):
-        if self['value'] > self.range_max:
-            return True
-        self['value'] += 1
+            # Since swapped values of the points, let's find their heights again
+            h1, h2, h3 = self.get_height(v1, v2, v3)
+            # current plane
+            v1_c, v2_c, v3_c = self.get_current_plane((v1, v2, v3), (h1, h2, h3), h)
 
+            # Generate mesh polygons for each of the three cases.
+            if points_above == 3:
+                # add one triangle.
+                tri = [v1_c, v2_c, v3_c]
+                self.add_triangle(tri, h, index_offset, vdata_values, prim_indices)
+                index_offset += 3
+                vertex_cnt += 3
+                continue
 
-class TerracedTerrain(ShowBase):
+            # The plane below; used to make vertical walls between planes.
+            v1_b, v2_b, v3_b = self.get_plane_below((v1, v2, v3), (h1, h2, h3), h)
 
-    def __init__(self):
-        super().__init__()
-        self.disable_mouse()
-        # self.setBackgroundColor(0.6, 0.6, 0.6)
-        self.render.set_antialias(AntialiasAttrib.MAuto)
-        self.setup_light()
+            # Find locations of new points that are located on the sides of the triangle's projections,
+            # by interpolating between vectors based on their heights.
 
-        # setup camera.
-        self.default_hpr = Vec3(-56.9, 0, 2.8)
-        self.camera_root = NodePath('camera_root')
-        self.camera_root.reparent_to(self.render)
-        self.camera_root.set_hpr(self.default_hpr)
+            # Interpolation value for v1 and v3
+            t1 = 0 if (denom := h1 - h3) == 0 else (h1 - h) / denom
+            v1_c_n = self.lerp(v1_c, v3_c, t1)
+            v1_b_n = self.lerp(v1_b, v3_b, t1)
 
-        # create model display region.
-        self.mw3d_node = self.create_display_region(Vec4(0.2, 1.0, 0.0, 1.0))
-        # create gui region.
-        self.gui_aspect2d = self.create_gui_region(Vec4(0.0, 0.2, 0.0, 1.0), 'gui')
+            # Interpolation value for v2 and v3
+            t2 = 0 if (denom := h2 - h3) == 0 else (h2 - h) / denom
+            v2_c_n = self.lerp(v2_c, v3_c, t2)
+            v2_b_n = self.lerp(v2_b, v3_b, t2)
 
-        # create gui.
-        self.gui = Gui(self.gui_aspect2d)
-        self.gui.create_control_widgets()
-        # show terrain.
-        self.create_model()
-        self.model.reparent_to(self.render)
+            if points_above == 2:
+                # Add roof part of the step
+                quad = [v1_c, v2_c, v2_c_n, v1_c_n]
+                self.add_step_roof(quad, h, index_offset, vdata_values, prim_indices)
+                index_offset += 4
 
-        self.show_wireframe = False
-        self.dragging = False
-        self.before_mouse_pos = None
-        self.state = Status.DISPLAYING
+                # Add wall part of the step.
+                quad = [v1_c_n, v2_c_n, v2_b_n, v1_b_n]
+                self.add_step_wall(quad, h, index_offset, vdata_values, prim_indices)
+                index_offset += 4
 
-        # self.accept('d', self.toggle_wireframe)
-        self.accept('i', self.print_info)
-        self.accept('escape', sys.exit)
-        self.accept('mouse1', self.mouse_click)
-        self.accept('mouse1-up', self.mouse_release)
-        self.taskMgr.add(self.update, 'update')
+                vertex_cnt += 8
 
-    def output_bam_file(self):
-        theme = self.gui.get_checked_theme()
-        num = datetime.now().strftime('%Y%m%d%H%M%S')
-        filename = f'{theme}_{num}.bam'
-        self.model.write_bam_file(filename)
+            elif points_above == 1:
+                # Add roof part of the step.
+                tri = [v3_c, v1_c_n, v2_c_n]
+                self.add_triangle(tri, h, index_offset, vdata_values, prim_indices)
+                index_offset += 3
 
-    def toggle_wireframe(self):
-        if self.show_wireframe:
-            self.model.set_render_mode_filled()
-        else:
-            self.model.set_render_mode_wireframe()
+                # Add wall part of the step.
+                quad = [v2_c_n, v1_c_n, v1_b_n, v2_b_n]
+                self.add_step_wall(quad, h, index_offset, vdata_values, prim_indices)
+                index_offset += 4
 
-        # self.toggle_wireframe()
-        self.show_wireframe = not self.show_wireframe
+                vertex_cnt += 7
 
-    def print_info(self):
-        print(self.camera_root.get_hpr())
+        return vertex_cnt
 
-    def calc_aspect_ratio(self, display_region):
-        """Args:
-            display_region (Vec4): (left, right, bottom, top)
-            The range is from 0 to 1.
-            0: the left and bottom; 1: the right and top.
+    def add_triangle(self, tri_vertices, color_thresh, index_offset, vdata_values, prim_indices):
+        self.create_triangle_vertices(tri_vertices, color_thresh, vdata_values)
+
+        prim_indices.extend([index_offset, index_offset + 1, index_offset + 2])
+
+    def add_step_roof(self, quad_vertices, color_thresh, index_offset, vdata_values, prim_indices):
+        self.create_quad_vertices(quad_vertices, color_thresh, vdata_values, wall=False)
+
+        prim_indices.extend([
+            *(index_offset, index_offset + 1, index_offset + 2),
+            *(index_offset + 2, index_offset + 3, index_offset)
+        ])
+
+    def add_step_wall(self, quad_vertices, color_thresh, index_offset, vdata_values, prim_indices):
+        self.create_quad_vertices(quad_vertices, color_thresh, vdata_values, wall=True)
+
+        prim_indices.extend([
+            *(index_offset, index_offset + 1, index_offset + 3),
+            *(index_offset + 1, index_offset + 2, index_offset + 3)
+        ])
+
+    def lerp(self, start, end, t):
+        """Args
+            start: start_point
+            end: end point
+            t: Interpolation rate; between 0.0 and 1.0
         """
-        props = self.win.get_properties()
-        window_size = props.get_size()
+        return start + (end - start) * t
 
-        region_w = display_region.y - display_region.x
-        region_h = display_region.w - display_region.z
-        display_w = int(window_size.x * region_w)
-        display_h = int(window_size.y * region_h)
-
-        gcd = math.gcd(display_w, display_h)
-        w = display_w / gcd
-        h = display_h / gcd
-        aspect_ratio = w / h
-
-        return aspect_ratio
-
-    def calc_scale(self, region_size):
-        aspect_ratio = self.get_aspect_ratio()
-
-        w = region_size.y - region_size.x
-        h = region_size.w - region_size.z
-        new_aspect_ratio = aspect_ratio * w / h
-
-        if aspect_ratio > 1.0:
-            s = 1. / h
-            return Vec3(s / new_aspect_ratio, 1.0, s)
-        else:
-            s = 1.0 / w
-            return Vec3(s, 1.0, s * new_aspect_ratio)
-
-    def create_mouse_watcher(self, name, display_region):
-        mw_node = MouseWatcher(name)
-        # Gets MouseAndKeyboard, the parent of base.mouseWatcherNode
-        # that passes mouse data into MouseWatchers,
-        input_ctrl = self.mouseWatcher.get_parent()
-        input_ctrl.attach_new_node(mw_node)
-        # Restricts new MouseWatcher to the intended display region.
-        mw_node.set_display_region(display_region)
-        return mw_node
-
-    def create_display_region(self, region_size):
-        """Create the region to display a model.
+    def noise_octaves(self, t, offsets, *components):
+        """Use noise octaves to calculate the height of a vertex
+           based on its coordinates and the number of octaves to be applied.
             Args:
-                size (Vec4): Vec4(left, right, bottom, top)
+                t (float): Elapsed time
+                offsets (Vec3): Offset vertices' position by a random value.
+                components (tuple): vertex components; for a plane, x and y; for a sphere, x, y, and z.
         """
-        region = self.win.make_display_region(region_size)
+        height = 0
+        amplitude = 1.0
+        frequency = 0.055
+        persistence = 0.375  # 0.5
+        lacunarity = 2.52    # 2.5
 
-        # create custom camera.
-        cam = NodePath(Camera('cam3d'))
-        aspect_ratio = self.calc_aspect_ratio(region_size)
-        cam.node().get_lens().set_aspect_ratio(aspect_ratio)
-        region.set_camera(cam)
-        self.camNode.set_active(False)
+        for i in range(self.octaves):
+            offset = offsets[i]
+            vert = [comp * frequency + o for comp, o in zip(components, offset)]
+            noise = self.noise(*[(v + t) * self.noise_scale for v in vert])
+            # fx = x * frequency + offset.x
+            # fy = y * frequency + offset.y
+            # noise = self.noise((fx + t) * self.scale, (fy + t) * self.scale)
 
-        cam.set_pos(Point3(30, -30, 0))
-        cam.look_at(Point3(0, 0, 0))
-        cam.reparent_to(self.camera_root)
+            height += amplitude * noise
+            frequency *= lacunarity
+            amplitude *= persistence
 
-        # create a MouseWatcher of the region.
-        mw3d_node = self.create_mouse_watcher('mw3d', region)
+        return height
 
-        return mw3d_node
-
-    def create_gui_region(self, region_size, name):
-        """Create the custom 2D region for gui.
-            Args:
-                size (Vec4): Vec4(left, right, bottom, top)
+    def calculate_quad_normal(self, vertices):
+        """The four vertices of the quadrilateral lie on a single plane.
+           However, since the normal at each vertex differed,
+           the quadrilateral was divided into two triangles, and the normal
+           for each triangle were calculated and averaged.
         """
-        region = self.win.make_display_region(region_size)
-        region.set_sort(20)
-        # region.set_clear_color((0.5, 0.5, 0.5, 1.))
-        # region.set_clear_color_active(True)
+        v1_0 = vertices[1] - vertices[0]
+        v2_0 = vertices[3] - vertices[0]
 
-        # create custom camera.
-        cam = NodePath(Camera(f'cam_{name}'))
-        lens = OrthographicLens()
-        lens.set_film_size(2, 2)
-        lens.set_near_far(-1000, 1000)
-        cam.node().set_lens(lens)
+        v1_2 = vertices[3] - vertices[2]
+        v2_2 = vertices[1] - vertices[2]
 
-        gui_render2d = NodePath(f'cam_{name}')
-        gui_render2d.set_depth_test(False)
-        gui_render2d.set_depth_write(False)
-
-        cam.reparent_to(gui_render2d)
-        region.set_camera(cam)
-
-        gui_aspect2d = gui_render2d.attach_new_node(PGTop(f'gui_{name}'))
-        scale = self.calc_scale(region_size)
-        gui_aspect2d.set_scale(scale)
-
-        # create a MouseWatcher of the region.
-        mw2d_nd = self.create_mouse_watcher(f'mw_{name}', region)
-        gui_aspect2d.node().set_mouse_watcher(mw2d_nd)
-
-        return gui_aspect2d
-
-    def setup_light(self):
-        ambient_light = NodePath(AmbientLight('ambient_light'))
-        ambient_light.reparent_to(self.render)
-        ambient_light.node().set_color(LColor(0.6, 0.6, 0.6, 1.0))
-        self.render.set_light(ambient_light)
-
-        directional_light = NodePath(DirectionalLight('directional_light'))
-        directional_light.node().get_lens().set_film_size(200, 200)
-        directional_light.node().get_lens().set_near_far(1, 100)
-
-        directional_light.node().set_color(LColor(1, 1, 1, 1))
-        directional_light.set_pos_hpr(Point3(0, 20, 50), Vec3(-30, -45, 0))
-
-        # directional_light.node().show_frustum()
-        self.render.set_light(directional_light)
-        directional_light.node().set_shadow_caster(True)
-        self.render.set_shader_auto()
-
-    def mouse_click(self):
-        self.dragging = True
-        self.dragging_start_time = globalClock.get_frame_time()
-
-    def mouse_release(self):
-        self.dragging = False
-        self.before_mouse_pos = None
-
-    def rotate_camera(self, mouse_pos, dt):
-        if self.before_mouse_pos:
-            angle = Vec3()
-
-            if (delta := mouse_pos.x - self.before_mouse_pos.x) < 0:
-                angle.x += 180
-            elif delta > 0:
-                angle.x -= 180
-
-            if (delta := mouse_pos.y - self.before_mouse_pos.y) < 0:
-                angle.z -= 180
-            elif delta > 0:
-                angle.z += 180
-
-            angle *= dt
-            self.camera_root.set_hpr(self.camera_root.get_hpr() + angle)
-
-        self.before_mouse_pos = Vec2(mouse_pos.xy)
-
-    def start_terrain_change(self):
-        if self.state == Status.DISPLAYING:
-            if self.gui.validate_input_values():
-                self.state = Status.REMOVE
-
-    def remove_current_terrain(self):
-        self.model.remove_node()
-        self.model = None
-
-    def create_model(self):
-        self.model = self.terrain_generator.create()
-        self.model.set_pos_hpr_scale(Point3(0, 0, 0), Vec3(0, 45, 0), 4)
-
-    def change_terrain_attributes(self):
-        input_values = self.gui.get_input_values()
-
-        for k, v in input_values.items():
-            setattr(self.terrain_generator, k, v)
-
-        theme_name = self.gui.get_checked_theme()
-        theme = themes[theme_name.lower()]
-        setattr(self.terrain_generator, "theme", theme)
-
-    def create_terrain_generator(self):
-        noise = self.gui.get_checked_noise()
-
-        match noise:
-            case 'SimplexNoise':
-                self.terrain_generator = TerracedTerrainGenerator.from_simplex()
-
-            case 'CelullarNoise':
-                self.terrain_generator = TerracedTerrainGenerator.from_cellular()
-
-            case 'PerlinNoise':
-                self.terrain_generator = TerracedTerrainGenerator.from_perlin()
-
-            case 'SimplexFractalNoise':
-                self.terrain_generator = TerracedTerrainGenerator.from_fractal()
-
-        default_values = {k: getattr(self.terrain_generator, k) for k in self.gui.input_items.keys()}
-        self.gui.set_input_values(default_values)
-
-    def update(self, task):
-        dt = globalClock.get_dt()
-
-        match self.state:
-
-            case Status.DISPLAYING:
-
-                if self.mw3d_node.has_mouse():
-                    mouse_pos = self.mw3d_node.get_mouse()
-
-                    if self.dragging:
-                        if globalClock.get_frame_time() - self.dragging_start_time >= 0.2:
-                            self.rotate_camera(mouse_pos, dt)
-
-            case Status.REMOVE:
-                self.gui.disable_buttons()
-                self.remove_current_terrain()
-                self.state = Status.SETUP
-
-            case Status.SETUP:
-                self.change_terrain_attributes()
-                self.bar = Progress(self.aspect2d)
-                self.terrain_create_thread = threading.Thread(target=self.create_model)
-                self.terrain_create_thread.start()
-                self.state = Status.CREATE
-
-            case Status.CREATE:
-                if not self.terrain_create_thread.is_alive():
-                    self.state = Status.WAIT
-                else:
-                    self.bar.update_progress()
-
-            case Status.WAIT:
-                if self.bar.finish():
-                    self.bar.destroy()
-                    self.state = Status.FINISH
-
-            case Status.FINISH:
-                self.model.reparent_to(self.render)
-                self.camera_root.set_hpr(self.default_hpr)
-                self.gui.enable_buttons()
-                self.state = Status.DISPLAYING
-
-        return task.cont
+        total = v2_0.cross(v1_0) + v2_2.cross(v1_2)
+        normal = (total / 2).normalized()
+        return normal
 
 
-if __name__ == '__main__':
-    app = TerracedTerrain()
-    app.run()
+class FlatTerracedTerrainMixin(TerracedTerrainMixin):
+    """A mixin class for flat terraced terrain.
+    """
+
+    def get_height(self, v1, v2, v3):
+        return v1.z, v2.z, v3.z
+
+    def get_current_plane(self, vertices, _, h):
+        return [Point3(v.x, v.y, h) for v in vertices]
+
+    def get_plane_below(self, vertices, _, h):
+        return [Point3(v.x, v.y, h - 0.05) for v in vertices]
+
+    def get_color(self, thresh):
+        return self.theme.color(thresh)
+
+    def calc_uv(self, x, y):
+        u = 0.5 + x / self.radius * 0.5
+        v = 0.5 + y / self.radius * 0.5
+        return u, v
+
+    def create_triangle_vertices(self, vertices, color_thresh, vdata_values):
+        color = self.get_color(color_thresh)
+        normal = Vec3(0, 0, 1)
+
+        for vertex in vertices:
+            uv = self.calc_uv(vertex.x, vertex.y)
+            vdata_values.extend([*vertex, *color, *normal, *uv])
+
+    def create_quad_vertices(self, vertices, color_thresh, vdata_values, wall=False):
+        color = self.get_color(color_thresh)
+        normal = self.calculate_quad_normal(vertices) if wall else Vec3(0, 0, 1)
+
+        for vertex in vertices:
+            uv = self.calc_uv(vertex.x, vertex.y)
+            vdata_values.extend([*vertex, *color, *normal, *uv])
+
+
+class SphericalTerracedTerrainMixin(TerracedTerrainMixin):
+    """A mixin class for spherical terraced terrain.
+    """
+
+    def get_height(self, v1, v2, v3):
+        return v1.length(), v2.length(), v3.length()
+
+    def get_current_plane(self, vertices, vector_lengths, h):
+        return [(v / l) * h for v, l in zip(vertices, vector_lengths)]
+
+    def get_plane_below(self, vertices, vector_lengths, h):
+        return [(v / l) * (h - 0.05) for v, l in zip(vertices, vector_lengths)]
+
+    def get_color(self, thresh):
+        return self.theme.color(thresh - 1)
+
+    def create_triangle_vertices(self, vertices, color_thresh, vdata_values):
+        color = self.get_color(color_thresh)
+
+        for vert in vertices:
+            vertex = vert * self.scale
+            normal = vert.normalized()
+            uv = self.calc_uv(normal)
+
+            vdata_values.extend([*vertex, *color, *normal, *uv])
+
+    def create_quad_vertices(self, vertices, color_thresh, vdata_values, wall=False):
+        color = self.get_color(color_thresh)
+        normal = self.calculate_quad_normal(vertices) if wall else None
+
+        for vert in vertices:
+            if not wall:
+                normal = vert.normalized()
+
+            vertex = vert * self.scale
+            uv = self.calc_uv(vertex.normalized())
+
+            vdata_values.extend([*vertex, *color, *normal, *uv])
