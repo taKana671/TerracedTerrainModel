@@ -1,11 +1,6 @@
 import numpy as np
-import array
-import math
-import random
-import copy
 
-import numpy as np
-from panda3d.core import Vec3, Point3, Vec2
+from panda3d.core import Vec3, Point3
 
 
 class TerracedTerrainMixin:
@@ -134,34 +129,6 @@ class TerracedTerrainMixin:
             t: Interpolation rate; between 0.0 and 1.0
         """
         return start + (end - start) * t
-
-    def noise_octaves(self, t, offsets, *components):
-        """Use noise octaves to calculate the height of a vertex
-           based on its coordinates and the number of octaves to be applied.
-            Args:
-                t (float): Elapsed time
-                offsets (Vec3): Offset vertices' position by a random value.
-                components (tuple): vertex components; for a plane, x and y; for a sphere, x, y, and z.
-        """
-        height = 0
-        amplitude = 1.0
-        frequency = 0.055
-        persistence = 0.375  # 0.5
-        lacunarity = 2.52    # 2.5
-
-        for i in range(self.octaves):
-            offset = offsets[i]
-            vert = [comp * frequency + o for comp, o in zip(components, offset)]
-            noise = self.noise(*[(v + t) * self.noise_scale for v in vert])
-            # fx = x * frequency + offset.x
-            # fy = y * frequency + offset.y
-            # noise = self.noise((fx + t) * self.scale, (fy + t) * self.scale)
-
-            height += amplitude * noise
-            frequency *= lacunarity
-            amplitude *= persistence
-
-        return height
 
     def calculate_quad_normal(self, vertices):
         """The four vertices of the quadrilateral lie on a single plane.

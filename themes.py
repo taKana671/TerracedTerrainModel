@@ -24,12 +24,20 @@ class Mountain(Theme):
     # LAYER_05 = ([0, 102, 49, 255], 1.0)
     # LAYER_06 = ([0, 133, 54, 255], None)
 
-    # for sphere
+    # # for sphere
+    # LAYER_01 = ([25, 47, 96, 255], 0.68)    # iron blue
+    # LAYER_02 = ([38, 73, 157, 255], 0.73)   # oriental blue
+    # LAYER_03 = ([111, 84, 54, 255], 0.75)  # burnt umber
+    # LAYER_04 = ([0, 51, 25, 255], 0.8)
+    # LAYER_05 = ([0, 102, 49, 255], 0.95)
+    # LAYER_06 = ([0, 133, 54, 255], None)
+
+     # for sphere
     LAYER_01 = ([25, 47, 96, 255], 0.68)    # iron blue
     LAYER_02 = ([38, 73, 157, 255], 0.73)   # oriental blue
     LAYER_03 = ([111, 84, 54, 255], 0.75)  # burnt umber
-    LAYER_04 = ([0, 51, 25, 255], 0.8)
-    LAYER_05 = ([0, 102, 49, 255], 0.95)
+    LAYER_04 = ([0, 51, 25, 255], 0.88)
+    LAYER_05 = ([0, 102, 49, 255], 1.0)
     LAYER_06 = ([0, 133, 54, 255], None)
 
     @classmethod

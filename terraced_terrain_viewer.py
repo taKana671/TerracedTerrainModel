@@ -16,8 +16,8 @@ from panda3d.core import AntialiasAttrib
 
 
 from gui import Gui
-from terraced_terrain_generator import TerracedTerrainGenerator
-# from sphere_terraced_terrain_generator import TerracedTerrainGenerator
+from flat_terraced_terrain import FlatTerracedTerrain
+from spherical_terraced_terrain import SphericalTerracedTerrain
 from themes import themes
 
 # Without 'framebuffer-multisample' and 'multisamples' settings,
@@ -81,6 +81,10 @@ class TerracedTerrain(ShowBase):
         # self.setBackgroundColor(0.6, 0.6, 0.6)
         self.render.set_antialias(AntialiasAttrib.MAuto)
         self.setup_light()
+
+        # *************************
+        self.terraced_terrain_generator = SphericalTerracedTerrain
+        # *************************
 
         # setup camera.
         self.default_hpr = Vec3(-56.9, 0, 2.8)
@@ -312,16 +316,16 @@ class TerracedTerrain(ShowBase):
 
         match noise:
             case 'SimplexNoise':
-                self.terrain_generator = TerracedTerrainGenerator.from_simplex()
+                self.terrain_generator = self.terraced_terrain_generator.from_simplex()
 
             case 'CelullarNoise':
-                self.terrain_generator = TerracedTerrainGenerator.from_cellular()
+                self.terrain_generator = self.terraced_terrain_generator.from_cellular()
 
             case 'PerlinNoise':
-                self.terrain_generator = TerracedTerrainGenerator.from_perlin()
+                self.terrain_generator = self.terraced_terrain_generator.from_perlin()
 
-            case 'SimplexFractalNoise':
-                self.terrain_generator = TerracedTerrainGenerator.from_fractal()
+            # case 'SimplexFractalNoise':
+            #     self.terrain_generator = TerracedTerrainGenerator.from_fractal()
 
         default_values = {k: getattr(self.terrain_generator, k) for k in self.gui.input_items.keys()}
         self.gui.set_input_values(default_values)
