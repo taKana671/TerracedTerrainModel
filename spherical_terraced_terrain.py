@@ -49,9 +49,9 @@ class SphericalTerracedTerrain(SphericalTerracedTerrainMixin, Cubesphere):
 
     @classmethod
     def from_simplex(cls, terrain_scale=1, noise_scale=15,
-                     max_depth=5, octaves=3, theme='mountain'):
+                     max_depth=5, octaves=3, **kwargs):
         simplex = SimplexNoise()
-        return cls(simplex.snoise3, terrain_scale, noise_scale, max_depth, octaves, theme=theme)
+        return cls(simplex.snoise3, terrain_scale, noise_scale, max_depth, octaves, **kwargs)
 
     @classmethod
     def from_perlin(cls, terrain_scale=1, noise_scale=18,

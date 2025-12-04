@@ -14,6 +14,7 @@ from panda3d.core import load_prc_file_data
 from panda3d.core import OrthographicLens, Camera, MouseWatcher, PGTop
 from panda3d.core import AntialiasAttrib
 
+import inspect
 
 from gui import Gui
 from flat_terraced_terrain import FlatTerracedTerrain
@@ -82,9 +83,9 @@ class TerracedTerrain(ShowBase):
         self.render.set_antialias(AntialiasAttrib.MAuto)
         self.setup_light()
 
-        # *************************
-        self.terraced_terrain_generator = SphericalTerracedTerrain
-        # *************************
+        # # *************************
+        # self.terraced_terrain_generator = SphericalTerracedTerrain
+        # # *************************
 
         # setup camera.
         self.default_hpr = Vec3(-56.9, 0, 2.8)
@@ -115,6 +116,51 @@ class TerracedTerrain(ShowBase):
         self.accept('mouse1', self.mouse_click)
         self.accept('mouse1-up', self.mouse_release)
         self.taskMgr.add(self.update, 'update')
+
+        self.accept('x', self.positioning, ['x', 1])
+        self.accept('shift-x', self.positioning, ['x', -1])
+        self.accept('y', self.positioning, ['y', 1])
+        self.accept('shift-y', self.positioning, ['y', -1])
+        self.accept('z', self.positioning, ['z', 1])
+        self.accept('shift-z', self.positioning, ['z', -1])
+        self.accept('h', self.positioning, ['h', 1])
+        self.accept('shift-h', self.positioning, ['h', -1])
+        self.accept('p', self.positioning, ['p', 1])
+        self.accept('shift-p', self.positioning, ['p', -1])
+        self.accept('r', self.positioning, ['r', 1])
+        self.accept('shift-r', self.positioning, ['r', -1])
+
+    def positioning(self, key, direction):
+        # if self.target:
+        distance = 0.5
+        angle = 2
+        pos = Point3()
+        hpr = Vec3()
+
+        match key:
+            case 'x':
+                pos.x = distance * direction
+
+            case 'y':
+                pos.y = distance * direction
+
+            case 'z':
+                pos.z = distance * direction
+
+            case 'h':
+                hpr.x = angle * direction
+            
+            case 'p':
+                hpr.y = angle * direction
+            
+            case 'r':
+                hpr.z = angle * direction
+
+
+        pos = self.directional_light.get_pos() + pos
+        hpr = self.directional_light.get_hpr() + hpr
+        self.directional_light.set_pos_hpr(pos, hpr)
+        print(self.directional_light.get_pos(), self.directional_light.get_hpr())
 
     def output_bam_file(self):
         theme = self.gui.get_checked_theme()
@@ -239,26 +285,26 @@ class TerracedTerrain(ShowBase):
     def setup_light(self):
         ambient_light = NodePath(AmbientLight('ambient_light'))
         ambient_light.reparent_to(self.render)
-        ambient_light.node().set_color(LColor(0.6, 0.6, 0.6, 1.0))
+        ambient_light.node().set_color(LColor(0.8, 0.8, 0.8, 1.0))
         self.render.set_light(ambient_light)
 
-        directional_light = NodePath(DirectionalLight('directional_light'))
-        directional_light.node().get_lens().set_film_size(200, 200)
-        directional_light.node().get_lens().set_near_far(1, 100)
+        self.directional_light = NodePath(DirectionalLight('directional_light'))
+        # directional_light.node().get_lens().set_film_size(200, 200)
+        # directional_light.node().get_lens().set_near_far(1, 50)
 
-        directional_light.node().set_color(LColor(1, 1, 1, 1))
+        self.directional_light.node().set_color(LColor(1, 1, 1, 1))
         # directional_light.set_pos_hpr(Point3(0, 0, 50), Vec3(-30, -45, 0))
-        directional_light.set_pos_hpr(Point3(0, -100, 50), Vec3(0, -45, 0))
+        self.directional_light.set_pos_hpr(Point3(0, -50, 100), Vec3(176, 187, 0))
 
-        # directional_light.node().show_frustum()
-        self.render.set_light(directional_light)
-        directional_light.node().set_shadow_caster(True)
+        self.render.set_light(self.directional_light)
+        self.directional_light.node().set_shadow_caster(True)
 
+        self.directional_light.node().showFrustum()
         self.render.set_shader_auto()
 
     def mouse_click(self):
         self.dragging = True
-        self.dragging_start_time = globalClock.get_frame_time()
+        self.dragging_start_time = globalClock.get_frame_time() 
 
     def mouse_release(self):
         self.dragging = False
@@ -269,9 +315,11 @@ class TerracedTerrain(ShowBase):
             angle = Vec3()
 
             if (delta := mouse_pos.x - self.before_mouse_pos.x) < 0:
-                angle.x += 180
-            elif delta > 0:
+                # angle.x += 180
                 angle.x -= 180
+            elif delta > 0:
+                # angle.x -= 180
+                angle.x += 180
 
             if (delta := mouse_pos.y - self.before_mouse_pos.y) < 0:
                 angle.z -= 180
@@ -279,7 +327,8 @@ class TerracedTerrain(ShowBase):
                 angle.z += 180
 
             angle *= dt
-            self.camera_root.set_hpr(self.camera_root.get_hpr() + angle)
+            # self.camera_root.set_hpr(self.camera_root.get_hpr() + angle)
+            self.model.set_hpr(self.model.get_hpr() + angle)
 
         self.before_mouse_pos = Vec2(mouse_pos.xy)
 
@@ -302,33 +351,67 @@ class TerracedTerrain(ShowBase):
         # *******************************
 
     def change_terrain_attributes(self):
+        _, terrain_generator = self.get_terrain_generator()
+
+
         input_values = self.gui.get_input_values()
+        theme_name = self.gui.get_theme()
+        # theme = themes[theme_name.lower()]
+        input_values['theme'] = theme_name
 
-        for k, v in input_values.items():
-            setattr(self.terrain_generator, k, v)
+        self.terrain_generator = terrain_generator(**input_values)
 
-        theme_name = self.gui.get_checked_theme()
-        theme = themes[theme_name.lower()]
-        setattr(self.terrain_generator, "theme", theme)
 
-    def create_terrain_generator(self):
-        noise = self.gui.get_checked_noise()
+        # import pdb; pdb.set_trace()
 
-        match noise:
+        # for k, v in input_values.items():
+        #     setattr(self.terrain_generator, k, v)
+
+        # theme_name = self.gui.get_checked_theme()
+        # theme = themes[theme_name.lower()]
+        # setattr(self.terrain_generator, "theme", theme)
+
+    def get_terrain_generator(self):
+        terrain_cls = FlatTerracedTerrain if self.gui.get_terrain() == "Flat" \
+            else SphericalTerracedTerrain
+
+        match self.gui.get_noise():
             case 'SimplexNoise':
-                self.terrain_generator = self.terraced_terrain_generator.from_simplex()
+                terrain_generator = terrain_cls.from_simplex
 
             case 'CelullarNoise':
-                self.terrain_generator = self.terraced_terrain_generator.from_cellular()
+                terrain_generator = terrain_cls.from_cellular
 
             case 'PerlinNoise':
-                self.terrain_generator = self.terraced_terrain_generator.from_perlin()
+                terrain_generator = terrain_cls.from_perlin
 
-            # case 'SimplexFractalNoise':
-            #     self.terrain_generator = TerracedTerrainGenerator.from_fractal()
+        return terrain_cls, terrain_generator
 
-        default_values = {k: getattr(self.terrain_generator, k) for k in self.gui.input_items.keys()}
-        self.gui.set_input_values(default_values)
+    def create_terrain_generator(self):
+        terrain_cls, terrain_generator = self.get_terrain_generator()
+
+        params_cls = inspect.signature(terrain_cls.__init__).parameters
+        params_gen = inspect.signature(terrain_generator).parameters
+
+        default_values = {}
+        for k in self.gui.input_items.keys():
+
+            if k in params_gen:
+                default_values[k] = params_gen[k].default
+                continue
+
+            if k in params_cls:
+                default_values[k] = params_cls[k].default
+                continue
+
+            default_values[k] = None
+
+        self.terrain_generator = terrain_generator()
+        # self.gui.set_input_values(default_values)
+        return default_values
+
+        # default_values = {k: getattr(self.terrain_generator, k) for k in self.gui.input_items.keys()}
+        # self.gui.set_input_values(default_values)
 
     def update(self, task):
         dt = globalClock.get_dt()

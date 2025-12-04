@@ -55,10 +55,13 @@ class FlatTerracedTerrain(FlatTerracedTerrainMixin, TriangleGenerator):
         )
 
     @classmethod
-    def from_simplex(cls, noise_scale=8, segs_c=5, radius=3,
-                     max_depth=6, octaves=3, theme='mountain'):
+    # def from_simplex(cls, noise_scale=8, segs_c=5, radius=3,
+    #                  max_depth=6, octaves=3, theme='mountain'):
+    def from_simplex(cls, noise_scale=8, segs_c=5, radius=3, max_depth=6, octaves=3, **kwargs):
         simplex = SimplexNoise()
-        return cls(simplex.snoise2, noise_scale, segs_c, radius, max_depth, octaves, theme=theme)
+        return cls(simplex.snoise2, noise_scale, segs_c, radius, max_depth, octaves, **kwargs)
+        # return cls(simplex.snoise2, noise_scale, segs_c, radius, max_depth, octaves, theme=theme)
+
 
     @classmethod
     def from_perlin(cls, noise_scale=15, segs_c=5, radius=3,
