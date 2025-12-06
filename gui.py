@@ -1,8 +1,47 @@
+from enum import StrEnum
+
 import direct.gui.DirectGuiGlobals as DGG
+from direct.gui.DirectGui import DirectEntry, DirectFrame, DirectLabel, \
+    DirectButton, DirectRadioButton, DirectOptionMenu
 from panda3d.core import Point3, LColor, Vec4
 from panda3d.core import TextNode
 from panda3d.core import TransparencyAttrib
-from direct.gui.DirectGui import DirectEntry, DirectFrame, DirectLabel, DirectButton, DirectRadioButton
+
+from themes import themes as themes_dic
+
+
+class TerrainTypes(StrEnum):
+
+    FLAT = 'Flat'
+    SPHERE = 'Sphere'
+
+
+class NoiseTypes(StrEnum):
+
+    SIMPLEX = 'SimplexNoise'
+    CELULLAR = 'CelullarNoise'
+    PERLIN = 'PerlinNoise'
+
+
+class DropDownMenu(DirectOptionMenu):
+
+    def __init__(self, parent, pos, items, command):
+        super().__init__(
+            parent=parent,
+            pos=pos,
+            frameSize=(-3.3, 3.3, -0.7, 0.7),
+            frameColor=Gui.frame_color,
+            item_frameColor=Gui.frame_color,
+            item_text_fg=Gui.text_color,
+            scale=Gui.text_size,
+            relief=DGG.SUNKEN,
+            items=items,
+            text_fg=Gui.text_color,
+            text_pos=(-3.2, -0.3),
+            popupMarker_scale=0.7,
+            command=command
+        )
+        self.initialiseoptions(type(self))
 
 
 class RadioButton(DirectRadioButton):
@@ -13,11 +52,11 @@ class RadioButton(DirectRadioButton):
             pos=pos,
             frameSize=(-2.5, 2.5, -0.5, 0.5),
             frameColor=(1, 1, 1, 0),
-            scale=0.06,
+            scale=Gui.text_size,
             text_align=TextNode.ALeft,
             text=txt,
             text_pos=(-1.5, -0.3),
-            text_fg=(1, 1, 1, 1),
+            text_fg=Gui.text_color,
             value=[txt],
             variable=variable,
             command=command
@@ -27,19 +66,17 @@ class RadioButton(DirectRadioButton):
 
 class Button(DirectButton):
 
-    def __init__(self, parent, txt, pos, command):
+    def __init__(self, parent, txt, pos, size, command):
         super().__init__(
             parent=parent,
             pos=pos,
             relief=DGG.RAISED,
-            # frameSize=(-0.28, 0.28, -0.05, 0.05),
-            frameSize=(-0.35, 0.35, -0.05, 0.05),
+            frameSize=size,
             frameColor=Gui.frame_color,
             borderWidth=(0.01, 0.01),
             text=txt,
             text_fg=Gui.text_color,
             text_scale=Gui.text_size,
-            # text_font=self.font,
             text_pos=(0, -0.01),
             command=command
         )
@@ -61,10 +98,22 @@ class Label(DirectLabel):
             frameColor=LColor(1, 1, 1, 0),
             text=txt,
             text_fg=Gui.text_color,
-            # text_font=self.font,
-            # text_scale=Gui.text_size,
-            text_scale=0.05,
+            text_scale=Gui.text_size,
             text_align=TextNode.ALeft
+        )
+        self.initialiseoptions(type(self))
+
+
+class Frame(DirectFrame):
+
+    def __init__(self, parent, frame_size, pos):
+        super().__init__(
+            parent=parent,
+            frameSize=frame_size,
+            frameColor=Gui.frame_color,
+            pos=pos,
+            relief=DGG.SUNKEN,
+            borderWidth=(0.01, 0.01)
         )
         self.initialiseoptions(type(self))
 
@@ -78,12 +127,9 @@ class Entry(DirectEntry):
             relief=DGG.SUNKEN,
             frameColor=Gui.frame_color,
             text_fg=Gui.text_color,
-            # text_scale=Gui.text_size,
             width=width,
-            # scale=Gui.text_size * 0.9,
-            scale=0.05,
+            scale=Gui.text_size,
             numLines=1,
-            # text_font=self.font,
             initialText=txt,
         )
         self.initialiseoptions(type(self))
@@ -109,7 +155,7 @@ class Gui(DirectFrame):
 
     frame_color = LColor(0.6, 0.6, 0.6, 1)
     text_color = LColor(1.0, 1.0, 1.0, 1.0)
-    text_size = 0.06
+    text_size = 0.055
 
     def __init__(self, parent):
         super().__init__(
@@ -125,17 +171,13 @@ class Gui(DirectFrame):
 
         self.entries = {}
         self.btns = []
+        self.theme_menu = None
 
         self.terrain_var = []
         self.noise_var = []
-        self.theme_var = []
+        self.theme_var = None
+        self.island_radio = None
 
-
-
-        # self.input_items = {
-        #     'scale': float, 'segs_c': int, 'radius': float, 'max_depth': int, 'octaves': int}
-        # self.input_items = {
-        #     'noise_scale': float, 'segs_c': int, 'radius': float, 'max_depth': int, 'octaves': int}
         self.input_items = {
             'noise_scale': float,
             'segs_c': int,
@@ -150,25 +192,36 @@ class Gui(DirectFrame):
         }
 
     def create_control_widgets(self):
-        self.create_entries(0.2)
-        self.create_radios(0.9)
-        # self.create_radios(0.85)
-        self.create_buttons(-0.7)
+        Frame(self, Vec4(-0.6, 0.6, -0.22, 0.22), Point3(0, 0, 0.78))
+        Frame(self, Vec4(-0.6, 0.6, -0.24, 0.24), Point3(0, 0, -0.76))
+
+        padding = 0.06
+        last_z = self.create_radios(0.9, padding)
+        last_z = self.create_entries(last_z - padding * 4, padding)
+        self.create_buttons(last_z - padding * 4)
+
+        self.set_default_values()
 
     def create_buttons(self, start_z):
+        btn_size = (-0.35, 0.35, -0.05, 0.05)
+        btn_half = (-0.175, 0.175, -0.05, 0.05)
 
         self.btns.append(Button(
-            self, 'Reflect Changes', Point3(0, 0, start_z), base.start_terrain_change))
+            self, 'Reflect Changes', Point3(0, 0, start_z), btn_size, base.start_terrain_change))
         self.btns.append(Button(
-            self, 'Output BamFile', Point3(0, 0, start_z - 0.1), base.output_bam_file))
+            self, 'Output BamFile', Point3(0, 0, start_z - 0.1), btn_size, base.output_bam_file))
         self.btns.append(Button(
-            self, 'Toggle Wireframe', Point3(0, 0, start_z - 0.2), base.toggle_wireframe))
+            self, 'Wireframe', Point3(btn_half[0], 0, start_z - 0.2), btn_half, base.toggle_wireframe))
+        self.btns.append(Button(
+            self, 'Rotation', Point3(btn_half[1], 0, start_z - 0.2), btn_half, base.toggle_rotation))
 
-    def create_entries(self, start_z):
-        """Create entry boxes and their labels.
+    def create_entries(self, start_z, padding):
+        """Create a theme label and entry boxes and their labels.
         """
+        self.theme_label = Label(self, 'theme', Point3(-0.32, 0.0, start_z))
+        start_z -= padding * 2
+
         for i, name in enumerate(self.input_items.keys()):
-            # z = start_z - i * 0.1
             z = start_z - i * 0.08
             Label(self, name, Point3(-0.32, 0.0, z))
             entry = Entry(self, Point3(0.07, 0, z))
@@ -177,11 +230,15 @@ class Gui(DirectFrame):
             if i == 0:
                 entry['focus'] = 1
 
-    def create_radios(self, start_z):
-        """Create radio buttons to select a noise and a theme.
-        """
-        # Create terrain type radio buttons
-        terrains = ['Flat', 'Sphere']
+        return z
+
+    def set_other_radios(self, radios):
+        for r in radios:
+            r.setOthers(radios)
+
+    def create_radios(self, start_z, padding):
+        # Create radio buttons to select terrain type.
+        terrains = [m.value for m in TerrainTypes]
         self.terrain_var += terrains[:1]
         start_x = -0.18
         radios = []
@@ -189,45 +246,32 @@ class Gui(DirectFrame):
         for i, name in enumerate(terrains):
             x = start_x + i * 0.25
             pos = (x, 0, start_z)
-            radio = RadioButton(self, name, pos, self.terrain_var, self.set_default_values)
+            radio = RadioButton(
+                self, name, pos, self.terrain_var, self.set_default_values)
             radios.append(radio)
 
-        for r in radios:
-            r.setOthers(radios)
+        self.set_other_radios(radios)
 
-        start_z -= 0.06 * 2
-
-        noises = ['SimplexNoise', 'CelullarNoise', 'PerlinNoise']
-        # noises = ['PerlinNoise', 'SimplexNoise', 'CelullarNoise']
-        # noises = ['CelullarNoise', 'PerlinNoise', 'SimplexNoise']
-        themes = ['Mountain', 'SnowMountain', 'Desert', 'Island']
-        # self.terrain = terrains[:1]
+        # Create radio buttons to select noise.
+        noises = [m.value for m in NoiseTypes]
         self.noise_var += noises[:1]
-        self.theme_var += themes[:1]
+        start_z -= padding * 2
+        radios = []
 
-        items = [
-            [noises, self.noise_var, self.set_default_values],
-            [themes, self.theme_var, ''],
-        ]
+        for i, name in enumerate(noises):
+            z = start_z - i * padding
+            pos = (-0.18, 0, z)
+            radio = RadioButton(
+                self, name, pos, self.noise_var, self.set_default_values)
+            radios.append(radio)
 
-        for names, variable, func in items:
-            radios = []
+        self.set_other_radios(radios)
 
-            for i, name in enumerate(names):
-                z = start_z - i * 0.06
-                pos = (-0.18, 0, z)
-                radio = RadioButton(self, name, pos, variable, func)
-                radios.append(radio)
+        return z
 
-            for r in radios:
-                r.setOthers(radios)
-
-            start_z = z - 0.06 * 2
-
-    # def set_input_values(self, default_values):
     def set_default_values(self):
-        if self.terrain_var and self.noise_var:
-            default_values = base.create_terrain_generator()
+        if self.entries:
+            default_values = base.get_default_values()
 
             for k, v in default_values.items():
                 entry = self.entries[k]
@@ -242,13 +286,24 @@ class Gui(DirectFrame):
 
                 entry.enterText(str(v))
 
+            # Changing the items in DirectOptionMenu causes settings like text
+            # within the menu to be lost, so it must be recreated each time.
+            if self.theme_menu:
+                self.theme_menu.destroy()
+
+            items = [k.title() for k in themes_dic.keys()]
+            if self.get_terrain() == TerrainTypes.SPHERE:
+                items.remove("Island")
+
+            z = self.theme_label.get_z() + 0.025
+            self.thmenu_menu = DropDownMenu(self, (0.07, 0, z), items, self.select_theme)
+            self.thmenu_menu.set(items[0])
+
     def validate_input_values(self):
         invalid_values = 0
 
         for k, data_type in self.input_items.items():
-            # entry = self.entries[k]
             if (entry := self.entries[k]).is_active():
-
                 try:
                     data_type(entry.get())
                 except ValueError:
@@ -268,23 +323,19 @@ class Gui(DirectFrame):
                 v = data_type(entry.get())
                 input_values[k] = v
 
-
-            # v = data_type(self.entries[k].get())
-            # input_values[k] = v
-
         return input_values
+
+    def select_theme(self, selected_item):
+        self.theme_var = selected_item
 
     def get_terrain(self):
         return self.terrain_var[0]
-        # return self.terrain[0]
 
     def get_noise(self):
         return self.noise_var[0]
-        # return self.noise[0]
 
     def get_theme(self):
-        # return self.theme_var[0]
-        return self.theme_var[0]
+        return self.theme_var
 
     def disable_buttons(self):
         for btn in self.btns:

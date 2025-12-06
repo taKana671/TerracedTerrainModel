@@ -1,5 +1,6 @@
-import sys
+import inspect
 import math
+import sys
 from enum import Enum, auto
 from datetime import datetime
 
@@ -14,12 +15,10 @@ from panda3d.core import load_prc_file_data
 from panda3d.core import OrthographicLens, Camera, MouseWatcher, PGTop
 from panda3d.core import AntialiasAttrib
 
-import inspect
-
-from gui import Gui
+from gui import Gui, TerrainTypes, NoiseTypes
 from flat_terraced_terrain import FlatTerracedTerrain
 from spherical_terraced_terrain import SphericalTerracedTerrain
-from themes import themes
+# from themes import themes
 
 # Without 'framebuffer-multisample' and 'multisamples' settings,
 # there appears to be no effect of 'set_antialias(AntialiasAttrib.MAuto)'.
@@ -83,10 +82,6 @@ class TerracedTerrain(ShowBase):
         self.render.set_antialias(AntialiasAttrib.MAuto)
         self.setup_light()
 
-        # # *************************
-        # self.terraced_terrain_generator = SphericalTerracedTerrain
-        # # *************************
-
         # setup camera.
         self.default_hpr = Vec3(-56.9, 0, 2.8)
         self.camera_root = NodePath('camera_root')
@@ -101,14 +96,12 @@ class TerracedTerrain(ShowBase):
         # create gui.
         self.gui = Gui(self.gui_aspect2d)
         self.gui.create_control_widgets()
-        # show terrain.
-        self.create_model()
-        self.model.reparent_to(self.render)
 
         self.show_wireframe = False
         self.dragging = False
         self.before_mouse_pos = None
-        self.state = Status.DISPLAYING
+        self.do_rotate = False
+        self.state = Status.SETUP
 
         # self.accept('d', self.toggle_wireframe)
         self.accept('i', self.print_info)
@@ -117,50 +110,50 @@ class TerracedTerrain(ShowBase):
         self.accept('mouse1-up', self.mouse_release)
         self.taskMgr.add(self.update, 'update')
 
-        self.accept('x', self.positioning, ['x', 1])
-        self.accept('shift-x', self.positioning, ['x', -1])
-        self.accept('y', self.positioning, ['y', 1])
-        self.accept('shift-y', self.positioning, ['y', -1])
-        self.accept('z', self.positioning, ['z', 1])
-        self.accept('shift-z', self.positioning, ['z', -1])
-        self.accept('h', self.positioning, ['h', 1])
-        self.accept('shift-h', self.positioning, ['h', -1])
-        self.accept('p', self.positioning, ['p', 1])
-        self.accept('shift-p', self.positioning, ['p', -1])
-        self.accept('r', self.positioning, ['r', 1])
-        self.accept('shift-r', self.positioning, ['r', -1])
+        # self.accept('x', self.positioning, ['x', 1])
+        # self.accept('shift-x', self.positioning, ['x', -1])
+        # self.accept('y', self.positioning, ['y', 1])
+        # self.accept('shift-y', self.positioning, ['y', -1])
+        # self.accept('z', self.positioning, ['z', 1])
+        # self.accept('shift-z', self.positioning, ['z', -1])
+        # self.accept('h', self.positioning, ['h', 1])
+        # self.accept('shift-h', self.positioning, ['h', -1])
+        # self.accept('p', self.positioning, ['p', 1])
+        # self.accept('shift-p', self.positioning, ['p', -1])
+        # self.accept('r', self.positioning, ['r', 1])
+        # self.accept('shift-r', self.positioning, ['r', -1])
 
-    def positioning(self, key, direction):
-        # if self.target:
-        distance = 0.5
-        angle = 2
-        pos = Point3()
-        hpr = Vec3()
+    # def positioning(self, key, direction):
+    #     # if self.target:
+    #     distance = 0.5
+    #     angle = 2
+    #     pos = Point3()
+    #     hpr = Vec3()
 
-        match key:
-            case 'x':
-                pos.x = distance * direction
+    #     match key:
+    #         case 'x':
+    #             pos.x = distance * direction
 
-            case 'y':
-                pos.y = distance * direction
+    #         case 'y':
+    #             pos.y = distance * direction
 
-            case 'z':
-                pos.z = distance * direction
+    #         case 'z':
+    #             pos.z = distance * direction
 
-            case 'h':
-                hpr.x = angle * direction
+    #         case 'h':
+    #             hpr.x = angle * direction
             
-            case 'p':
-                hpr.y = angle * direction
+    #         case 'p':
+    #             hpr.y = angle * direction
             
-            case 'r':
-                hpr.z = angle * direction
+    #         case 'r':
+    #             hpr.z = angle * direction
 
 
-        pos = self.directional_light.get_pos() + pos
-        hpr = self.directional_light.get_hpr() + hpr
-        self.directional_light.set_pos_hpr(pos, hpr)
-        print(self.directional_light.get_pos(), self.directional_light.get_hpr())
+        # pos = self.directional_light.get_pos() + pos
+        # hpr = self.directional_light.get_hpr() + hpr
+        # self.directional_light.set_pos_hpr(pos, hpr)
+        # print(self.directional_light.get_pos(), self.directional_light.get_hpr())
 
     def output_bam_file(self):
         theme = self.gui.get_checked_theme()
@@ -176,6 +169,9 @@ class TerracedTerrain(ShowBase):
 
         # self.toggle_wireframe()
         self.show_wireframe = not self.show_wireframe
+
+    def toggle_rotation(self):
+        self.do_rotate = not self.do_rotate
 
     def print_info(self):
         print(self.camera_root.get_hpr())
@@ -293,18 +289,15 @@ class TerracedTerrain(ShowBase):
         # directional_light.node().get_lens().set_near_far(1, 50)
 
         self.directional_light.node().set_color(LColor(1, 1, 1, 1))
-        # directional_light.set_pos_hpr(Point3(0, 0, 50), Vec3(-30, -45, 0))
         self.directional_light.set_pos_hpr(Point3(0, -50, 100), Vec3(176, 187, 0))
-
         self.render.set_light(self.directional_light)
         self.directional_light.node().set_shadow_caster(True)
-
         self.directional_light.node().showFrustum()
         self.render.set_shader_auto()
 
     def mouse_click(self):
         self.dragging = True
-        self.dragging_start_time = globalClock.get_frame_time() 
+        self.dragging_start_time = globalClock.get_frame_time()
 
     def mouse_release(self):
         self.dragging = False
@@ -315,22 +308,27 @@ class TerracedTerrain(ShowBase):
             angle = Vec3()
 
             if (delta := mouse_pos.x - self.before_mouse_pos.x) < 0:
-                # angle.x += 180
-                angle.x -= 180
+                angle.x += 45
             elif delta > 0:
-                # angle.x -= 180
-                angle.x += 180
+                angle.x -= 45
 
             if (delta := mouse_pos.y - self.before_mouse_pos.y) < 0:
-                angle.z -= 180
+                angle.z -= 45
             elif delta > 0:
-                angle.z += 180
+                angle.z += 45
 
             angle *= dt
-            # self.camera_root.set_hpr(self.camera_root.get_hpr() + angle)
-            self.model.set_hpr(self.model.get_hpr() + angle)
+            self.camera_root.set_hpr(self.camera_root.get_hpr() + angle)
 
         self.before_mouse_pos = Vec2(mouse_pos.xy)
+
+    def rotate_model(self, dt):
+        angle = self.model.get_hpr() + 20 * dt
+
+        if angle > 360:
+            angle = 0
+
+        self.model.set_hpr(angle)
 
     def start_terrain_change(self):
         if self.state == Status.DISPLAYING:
@@ -342,56 +340,53 @@ class TerracedTerrain(ShowBase):
         self.model = None
 
     def create_model(self):
-        self.model = self.terrain_generator.create()
-        self.model.set_pos_hpr_scale(Point3(0, 0, 0), Vec3(0, 45, 0), 4)
+        self.do_rotate = True \
+            if (terrain_type := self.gui.get_terrain()) == 'Sphere' else False
 
-        # *******************************
-        # self.model.set_color(1, 1, 1, 1)
-        # self.model.set_texture(self.loader.load_texture('brick.jpg'))
-        # *******************************
-
-    def change_terrain_attributes(self):
-        _, terrain_generator = self.get_terrain_generator()
-
+        gen_method = self.get_terrain_generator(
+            self.gui.get_noise(),
+            self.get_terrain_cls(terrain_type)
+        )
 
         input_values = self.gui.get_input_values()
         theme_name = self.gui.get_theme()
-        # theme = themes[theme_name.lower()]
         input_values['theme'] = theme_name
 
-        self.terrain_generator = terrain_generator(**input_values)
+        terrain_generator = gen_method(**input_values)
+        self.model = terrain_generator.create()
+        self.model.set_pos_hpr_scale(Point3(0, 0, 0), Vec3(0, 45, 0), 4)
 
+    def get_terrain_cls(self, terrain_type):
 
-        # import pdb; pdb.set_trace()
+        match terrain_type:
+            case TerrainTypes.FLAT:
+                return FlatTerracedTerrain
+            case TerrainTypes.SPHERE:
+                return SphericalTerracedTerrain
+            case _:
+                raise ValueError
 
-        # for k, v in input_values.items():
-        #     setattr(self.terrain_generator, k, v)
+    def get_terrain_generator(self, noise_type, terrain_cls):
 
-        # theme_name = self.gui.get_checked_theme()
-        # theme = themes[theme_name.lower()]
-        # setattr(self.terrain_generator, "theme", theme)
+        match noise_type:
+            case NoiseTypes.SIMPLEX:
+                return terrain_cls.from_simplex
 
-    def get_terrain_generator(self):
-        terrain_cls = FlatTerracedTerrain if self.gui.get_terrain() == "Flat" \
-            else SphericalTerracedTerrain
+            case NoiseTypes.CELULLAR:
+                return terrain_cls.from_cellular
 
-        match self.gui.get_noise():
-            case 'SimplexNoise':
-                terrain_generator = terrain_cls.from_simplex
+            case NoiseTypes.PERLIN:
+                return terrain_cls.from_perlin
 
-            case 'CelullarNoise':
-                terrain_generator = terrain_cls.from_cellular
+            case _:
+                raise ValueError
 
-            case 'PerlinNoise':
-                terrain_generator = terrain_cls.from_perlin
-
-        return terrain_cls, terrain_generator
-
-    def create_terrain_generator(self):
-        terrain_cls, terrain_generator = self.get_terrain_generator()
+    def get_default_values(self):
+        terrain_cls = self.get_terrain_cls(self.gui.get_terrain())
+        gen_method = self.get_terrain_generator(self.gui.get_noise(), terrain_cls)
 
         params_cls = inspect.signature(terrain_cls.__init__).parameters
-        params_gen = inspect.signature(terrain_generator).parameters
+        params_gen = inspect.signature(gen_method).parameters
 
         default_values = {}
         for k in self.gui.input_items.keys():
@@ -406,12 +401,7 @@ class TerracedTerrain(ShowBase):
 
             default_values[k] = None
 
-        self.terrain_generator = terrain_generator()
-        # self.gui.set_input_values(default_values)
         return default_values
-
-        # default_values = {k: getattr(self.terrain_generator, k) for k in self.gui.input_items.keys()}
-        # self.gui.set_input_values(default_values)
 
     def update(self, task):
         dt = globalClock.get_dt()
@@ -419,6 +409,8 @@ class TerracedTerrain(ShowBase):
         match self.state:
 
             case Status.DISPLAYING:
+                if self.do_rotate:
+                    self.rotate_model(dt)
 
                 if self.mw3d_node.has_mouse():
                     mouse_pos = self.mw3d_node.get_mouse()
@@ -433,7 +425,6 @@ class TerracedTerrain(ShowBase):
                 self.state = Status.SETUP
 
             case Status.SETUP:
-                self.change_terrain_attributes()
                 self.bar = Progress(self.aspect2d)
                 self.terrain_create_thread = threading.Thread(target=self.create_model)
                 self.terrain_create_thread.start()

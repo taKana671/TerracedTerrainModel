@@ -55,25 +55,46 @@ class FlatTerracedTerrain(FlatTerracedTerrainMixin, TriangleGenerator):
         )
 
     @classmethod
-    # def from_simplex(cls, noise_scale=8, segs_c=5, radius=3,
-    #                  max_depth=6, octaves=3, theme='mountain'):
-    def from_simplex(cls, noise_scale=8, segs_c=5, radius=3, max_depth=6, octaves=3, **kwargs):
+    def from_simplex(cls, noise_scale=8, segs_c=5, radius=3,
+                     max_depth=6, octaves=3, **kwargs):
         simplex = SimplexNoise()
-        return cls(simplex.snoise2, noise_scale, segs_c, radius, max_depth, octaves, **kwargs)
-        # return cls(simplex.snoise2, noise_scale, segs_c, radius, max_depth, octaves, theme=theme)
 
+        return cls(
+            simplex.snoise2,
+            noise_scale=noise_scale,
+            segs_c=segs_c,
+            radius=radius,
+            max_depth=max_depth,
+            octaves=octaves,
+            **kwargs)
 
     @classmethod
     def from_perlin(cls, noise_scale=15, segs_c=5, radius=3,
-                    max_depth=6, octaves=3, theme='mountain'):
+                    max_depth=6, octaves=3, **kwargs):
         perlin = PerlinNoise()
-        return cls(perlin.pnoise2, noise_scale, segs_c, radius, max_depth, octaves, theme=theme)
+
+        return cls(
+            perlin.pnoise2,
+            noise_scale=noise_scale,
+            segs_c=segs_c,
+            radius=radius,
+            max_depth=max_depth,
+            octaves=octaves,
+            **kwargs)
 
     @classmethod
     def from_cellular(cls, noise_scale=10, segs_c=5, radius=3,
-                      max_depth=6, octaves=3, theme='mountain'):
+                      max_depth=6, octaves=3, **kwargs):
         cellular = CellularNoise()
-        return cls(cellular.fdist2, noise_scale, segs_c, radius, max_depth, octaves, theme=theme)
+
+        return cls(
+            cellular.fdist2,
+            noise_scale=noise_scale,
+            segs_c=segs_c,
+            radius=radius,
+            max_depth=max_depth,
+            octaves=octaves,
+            **kwargs)
 
     def get_polygon_vertices(self, theta):
         rad = math.radians(theta)

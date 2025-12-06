@@ -58,7 +58,7 @@ class Mountain(Theme):
         return cls.LAYER_06.rgba
 
 
-class SnowMountain(Theme):
+class Snow(Theme):
 
     LAYER_01 = ([3, 51, 102, 255], 0.43)
     LAYER_02 = ([38, 73, 157, 255], 0.5)

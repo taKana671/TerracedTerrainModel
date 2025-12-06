@@ -51,19 +51,39 @@ class SphericalTerracedTerrain(SphericalTerracedTerrainMixin, Cubesphere):
     def from_simplex(cls, terrain_scale=1, noise_scale=15,
                      max_depth=5, octaves=3, **kwargs):
         simplex = SimplexNoise()
-        return cls(simplex.snoise3, terrain_scale, noise_scale, max_depth, octaves, **kwargs)
+
+        return cls(
+            simplex.snoise3,
+            terrain_scale=terrain_scale,
+            noise_scale=noise_scale,
+            max_depth=max_depth,
+            octaves=octaves,
+            **kwargs)
 
     @classmethod
     def from_perlin(cls, terrain_scale=1, noise_scale=18,
-                    max_depth=5, octaves=4, theme='mountain'):
+                    max_depth=5, octaves=4, **kwargs):
         perlin = PerlinNoise()
-        return cls(perlin.pnoise3, terrain_scale, noise_scale, max_depth, octaves, theme=theme)
+
+        return cls(
+            perlin.pnoise3,
+            terrain_scale=terrain_scale,
+            noise_scale=noise_scale,
+            max_depth=max_depth,
+            octaves=octaves,
+            **kwargs)
 
     @classmethod
     def from_cellular(cls, terrain_scale=1, noise_scale=15,
-                      max_depth=5, octaves=3, theme='mountain'):
+                      max_depth=5, octaves=3, **kwargs):
         cellular = CellularNoise()
-        return cls(cellular.fdist3, terrain_scale, noise_scale, max_depth, octaves, theme=theme)
+        return cls(
+            cellular.fdist3,
+            terrain_scale=terrain_scale,
+            noise_scale=noise_scale,
+            max_depth=max_depth,
+            octaves=octaves,
+            **kwargs)
 
     def create_terraced_terrain(self, vertex_cnt, vdata_values, prim_indices):
         offset = Vec3(*[random.uniform(-1000, 1000) for _ in range(3)])
