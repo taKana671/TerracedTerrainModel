@@ -6,10 +6,10 @@ from panda3d.core import Vec3, Point3
 
 from noise import SimplexNoise, PerlinNoise, CellularNoise
 from noise import Fractal2D
-from themes import themes, Island
+from .themes import themes, Island
 from mask.radial_gradient_generator import RadialGradientMask
 from shapes.spherical_polyhedron import TriangleGenerator
-from terraced_terrain import FlatTerracedTerrainMixin
+from .terraced_terrain import FlatTerracedTerrainMixin
 
 
 class FlatTerracedTerrain(FlatTerracedTerrainMixin, TriangleGenerator):

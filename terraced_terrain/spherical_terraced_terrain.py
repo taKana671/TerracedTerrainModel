@@ -5,8 +5,8 @@ from panda3d.core import Vec3
 
 from shapes import Cubesphere
 from noise import SimplexNoise, PerlinNoise, CellularNoise, Fractal3D
-from themes import themes
-from terraced_terrain import SphericalTerracedTerrainMixin
+from .themes import themes
+from .terraced_terrain import SphericalTerracedTerrainMixin
 
 
 class SphericalTerracedTerrain(SphericalTerracedTerrainMixin, Cubesphere):
