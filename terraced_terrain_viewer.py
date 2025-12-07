@@ -18,7 +18,7 @@ from panda3d.core import AntialiasAttrib
 from gui import Gui, TerrainTypes, NoiseTypes
 from flat_terraced_terrain import FlatTerracedTerrain
 from spherical_terraced_terrain import SphericalTerracedTerrain
-# from themes import themes
+
 
 # Without 'framebuffer-multisample' and 'multisamples' settings,
 # there appears to be no effect of 'set_antialias(AntialiasAttrib.MAuto)'.
@@ -110,53 +110,8 @@ class TerracedTerrain(ShowBase):
         self.accept('mouse1-up', self.mouse_release)
         self.taskMgr.add(self.update, 'update')
 
-        # self.accept('x', self.positioning, ['x', 1])
-        # self.accept('shift-x', self.positioning, ['x', -1])
-        # self.accept('y', self.positioning, ['y', 1])
-        # self.accept('shift-y', self.positioning, ['y', -1])
-        # self.accept('z', self.positioning, ['z', 1])
-        # self.accept('shift-z', self.positioning, ['z', -1])
-        # self.accept('h', self.positioning, ['h', 1])
-        # self.accept('shift-h', self.positioning, ['h', -1])
-        # self.accept('p', self.positioning, ['p', 1])
-        # self.accept('shift-p', self.positioning, ['p', -1])
-        # self.accept('r', self.positioning, ['r', 1])
-        # self.accept('shift-r', self.positioning, ['r', -1])
-
-    # def positioning(self, key, direction):
-    #     # if self.target:
-    #     distance = 0.5
-    #     angle = 2
-    #     pos = Point3()
-    #     hpr = Vec3()
-
-    #     match key:
-    #         case 'x':
-    #             pos.x = distance * direction
-
-    #         case 'y':
-    #             pos.y = distance * direction
-
-    #         case 'z':
-    #             pos.z = distance * direction
-
-    #         case 'h':
-    #             hpr.x = angle * direction
-            
-    #         case 'p':
-    #             hpr.y = angle * direction
-            
-    #         case 'r':
-    #             hpr.z = angle * direction
-
-
-        # pos = self.directional_light.get_pos() + pos
-        # hpr = self.directional_light.get_hpr() + hpr
-        # self.directional_light.set_pos_hpr(pos, hpr)
-        # print(self.directional_light.get_pos(), self.directional_light.get_hpr())
-
     def output_bam_file(self):
-        theme = self.gui.get_checked_theme()
+        theme = self.gui.get_theme()
         num = datetime.now().strftime('%Y%m%d%H%M%S')
         filename = f'{theme}_{num}.bam'
         self.model.write_bam_file(filename)

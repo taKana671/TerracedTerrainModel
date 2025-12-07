@@ -17,12 +17,16 @@ class FlatTerracedTerrain(FlatTerracedTerrainMixin, TriangleGenerator):
         Args:
             noise (func): Function that generates noise.
             noise_scale (float): The smaller this value is, the more sparse the noise becomes.
-            segs_s (int): The number of vertices in the polygon that forms the ground; minimum is 3.
-            radius (float): Length from the center of the polygon forming the ground to each vertex.
+            segs_c (int): The number of vertices in the polygon that forms the ground; minimum is 3.
+            radius (float): Length from the center of the polygon that forms the ground to each vertex.
             max_depth (int): The number of times that triangles, formed by the center point and each
                              vertex of the polygon that forms the ground, are further divided into triangles.
-            octaves (int): The number of loops to calculate the height of the vertex coordinates.
-            theme (str): one of "mountain", "snowmountain" and "desert".
+            octaves (int): The number of times to apply the noise algorithm. Each iteration represent an octave.
+            amplitude  (float): Noise strength.
+            frequency (float): Basic frequency of terrain.
+            persistence (float): At the end of each iteration, the amplitude is decreased by multiplying itself by persistence, less than 1.
+            lacunarity (float): At the end of each iteration, the frequency is increased by multiplying itself by lacunarity, greater than 1.
+            theme (str): one of "mountain", "snowmountain", "desert" and "island".
     """
 
     def __init__(self,

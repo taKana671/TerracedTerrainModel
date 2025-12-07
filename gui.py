@@ -176,7 +176,6 @@ class Gui(DirectFrame):
         self.terrain_var = []
         self.noise_var = []
         self.theme_var = None
-        self.island_radio = None
 
         self.input_items = {
             'noise_scale': float,
@@ -287,7 +286,7 @@ class Gui(DirectFrame):
                 entry.enterText(str(v))
 
             # Changing the items in DirectOptionMenu causes settings like text
-            # within the menu to be lost, so it must be recreated each time.
+            # within the menu to be lost, so it's good to be recreated each time.
             if self.theme_menu:
                 self.theme_menu.destroy()
 

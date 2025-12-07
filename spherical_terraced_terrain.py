@@ -12,14 +12,17 @@ from terraced_terrain import SphericalTerracedTerrainMixin
 class SphericalTerracedTerrain(SphericalTerracedTerrainMixin, Cubesphere):
     """A class to generate a terraced terrain.
         Args:
-            noise (func): Function that generates noise.
-            scale (float): The smaller this value is, the more sparse the noise becomes.
-            segs_s (int): The number of vertices in the polygon that forms the ground; minimum is 3.
-            radius (float): Length from the center of the polygon forming the ground to each vertex.
+            noise_gen (func): Function that generates noise.
+            terrain_scale (float): Scale of sphere.
+            noise_scale (float): The smaller this value is, the more sparse the noise becomes.
             max_depth (int): The number of times that triangles, formed by the center point and each
                              vertex of the polygon that forms the ground, are further divided into triangles.
-            octaves (int): The number of loops to calculate the height of the vertex coordinates.
-            theme (str): one of "mountain", "snowmountain" and "desert".
+            octaves (int): The number of times to apply the noise algorithm. Each iteration represent an octave.
+            amplitude  (float): Noise strength.
+            frequency (float): Basic frequency of terrain.
+            persistence (float): At the end of each iteration, the amplitude is decreased by multiplying itself by persistence, less than 1.
+            lacunarity (float): At the end of each iteration, the frequency is increased by multiplying itself by lacunarity, greater than 1.
+            theme (str): one of "mountain", "snow" and "desert".
     """
 
     def __init__(self,
@@ -28,15 +31,18 @@ class SphericalTerracedTerrain(SphericalTerracedTerrainMixin, Cubesphere):
                  noise_scale=10,
                  max_depth=5,
                  octaves=3,
-                 persistence=0.375,
-                 lacunarity=2.52,
                  amplitude=1.0,
                  frequency=0.055,
+                 persistence=0.375,
+                 lacunarity=2.52,
                  theme='mountain'
                  ):
         super().__init__(max_depth, terrain_scale)
         self.noise_scale = noise_scale
-        self.theme = themes.get(theme.lower())
+
+        if (theme_name := theme.lower()) == 'island':
+            raise ValueError("Island is only for flat terraced terrain at this time.")
+        self.theme = themes.get(theme_name)
 
         self.noise = Fractal3D(
             noise_gen=noise_gen,
