@@ -7,7 +7,7 @@ from panda3d.core import Point3, LColor, Vec4
 from panda3d.core import TextNode
 from panda3d.core import TransparencyAttrib
 
-from themes import themes as themes_dic
+from terraced_terrain.themes import themes as themes_dic
 
 
 class TerrainTypes(StrEnum):

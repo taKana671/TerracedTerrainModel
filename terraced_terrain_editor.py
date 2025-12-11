@@ -2,7 +2,6 @@ import inspect
 import math
 import sys
 from enum import Enum, auto
-from datetime import datetime
 
 from direct.gui.DirectWaitBar import DirectWaitBar
 from direct.showbase.ShowBase import ShowBase
@@ -16,8 +15,8 @@ from panda3d.core import OrthographicLens, Camera, MouseWatcher, PGTop
 from panda3d.core import AntialiasAttrib
 
 from gui import Gui, TerrainTypes, NoiseTypes
-from flat_terraced_terrain import FlatTerracedTerrain
-from spherical_terraced_terrain import SphericalTerracedTerrain
+from terraced_terrain.flat_terraced_terrain import FlatTerracedTerrain
+from terraced_terrain.spherical_terraced_terrain import SphericalTerracedTerrain
 
 
 # Without 'framebuffer-multisample' and 'multisamples' settings,

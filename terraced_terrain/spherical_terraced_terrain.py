@@ -3,10 +3,10 @@ import random
 
 from panda3d.core import Vec3
 
-from shapes import Cubesphere
-from noise import SimplexNoise, PerlinNoise, CellularNoise, Fractal3D
-from .themes import themes
 from .terraced_terrain import SphericalTerracedTerrainMixin
+from .themes import themes
+from noise import SimplexNoise, PerlinNoise, CellularNoise, Fractal3D
+from shapes import Cubesphere
 
 
 class SphericalTerracedTerrain(SphericalTerracedTerrainMixin, Cubesphere):
