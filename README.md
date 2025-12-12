@@ -1,10 +1,10 @@
 # TerracedTerrain
 
-This repository uses the meandering triangles algorithm to create a 3D model of terraced terrain. 
-The polygon that forms the ground is repeatedly divided into triangles, and noise such as simplex and cellular is used to calculate the height of each vertex. 
+This repository uses the meandering triangles algorithm to create a 3D model of spherical or flat terraced terrain. 
+For spherical terrain, a base sphere is created by repeatedly subdividing each face of the cube into triangles and normalizing the distance from the center to each vertex. For flat terrain, a ground is created by repeatedly dividing a polygon into triangles. And noise such as simplex and cellular is used to calculate the height of each vertex. 
 Then, the meandering triangles algorithm is used to form a staircase-like terrain.
 The terrain is colored by setting color information directly to the vertices.
-In addition, by running `terraced_terrain.py`, you can create a 3D model while checking how the terrain changes depending on the parameters.
+In addition, by running `terraced_terrain_editor.py`, you can create a 3D model while checking how the terrain changes depending on the parameters.
 <br/><br/>
 
 ![Image](https://github.com/user-attachments/assets/bb53c1d9-415b-4599-9a42-f8442efc1630)
@@ -25,21 +25,21 @@ The meandering triangles algorithm is based on below:
   
 # Environment
 
-* Python 3.12
+* Python 3.13
 * Windows11
 
 # Usage
 
 ### Clone this repository with submodule.
 ```
-git clone --recursive https://github.com/taKana671/TerracedTerrain.git
+git clone --recursive https://github.com/taKana671/TerracedTerrainModel.git
 ```
 
 ### Build cython code.
 
 If cytnon code is not built, noise is calculated using python code.
 ```
-cd TerracedTerrain
+cd TerracedTerrainModel
 python setup.py build_ext --inplace
 ```
 
@@ -87,13 +87,13 @@ model = generator.create()
 * theme: str_
   * one of "mountain", "snowmountain" and "desert"; default is mountain.
  
-### Usage of terraced_terrain.py
+### Usage of terraced_terrain_editor.py
 
-Run terraced_terrain.py and select the noise and theme using the checkboxes. 
+Run terraced_terrain_editor.py and select the terrain type, noise and theme. 
 If you want to change the parameters, edit the values in the entry boxes and click the [reflet] button.
 
 ```
-python terraced_terrain.py
+python terraced_terrain_editor.py
 ```
 
 ![Image](https://github.com/user-attachments/assets/d790e644-7679-41d7-9869-48027058bc72)
