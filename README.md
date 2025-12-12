@@ -1,4 +1,4 @@
-# TerracedTerrain
+# TerracedTerrainModel
 
 This repository uses the meandering triangles algorithm to create a 3D model of spherical or flat terraced terrain. 
 For spherical terrain, a base sphere is created by repeatedly subdividing each face of the cube into triangles and normalizing the distance from the center to each vertex. For flat terrain, a ground is created by repeatedly dividing a polygon into triangles.
