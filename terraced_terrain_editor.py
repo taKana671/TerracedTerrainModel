@@ -99,7 +99,7 @@ class TerracedTerrain(ShowBase):
         self.show_wireframe = False
         self.dragging = False
         self.before_mouse_pos = None
-        self.do_rotate = False
+        self.do_rotate = True
         self.state = Status.SETUP
 
         # self.accept('d', self.toggle_wireframe)

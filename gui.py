@@ -7,7 +7,7 @@ from panda3d.core import Point3, LColor, Vec4
 from panda3d.core import TextNode
 from panda3d.core import TransparencyAttrib
 
-from terraced_terrain.themes import themes as themes_dic
+from terraced_terrain.themes.themes import themes_sphere, themes_flat
 
 
 class TerrainTypes(StrEnum):
@@ -290,9 +290,9 @@ class Gui(DirectFrame):
             if self.theme_menu:
                 self.theme_menu.destroy()
 
+            themes_dic = themes_sphere if self.get_terrain() == TerrainTypes.SPHERE \
+                else themes_flat
             items = [k.title() for k in themes_dic.keys()]
-            if self.get_terrain() == TerrainTypes.SPHERE:
-                items.remove("Island")
 
             z = self.theme_label.get_z() + 0.025
             self.thmenu_menu = DropDownMenu(self, (0.07, 0, z), items, self.select_theme)
