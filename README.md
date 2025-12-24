@@ -8,8 +8,8 @@ The terrain is colored by setting color information directly to the vertices.
 In addition, by running `terraced_terrain_editor.py`, you can create a 3D model while checking how the terrain changes depending on the parameters.
 <br/><br/>
 
-<img width="975" height="676" alt="Image" src="https://github.com/user-attachments/assets/bac4eb5b-d3e0-461a-9671-9d667329321d" />
-<img width="976" height="678" alt="Image" src="https://github.com/user-attachments/assets/d2d4404c-735f-4a52-90be-4e255eb385db" />
+<img width="985" height="678" alt="Image" src="https://github.com/user-attachments/assets/f9554fae-68ef-46ca-b633-55b7da3addb7" />
+<img width="990" height="688" alt="Image" src="https://github.com/user-attachments/assets/6ebe960b-382e-4df1-aee9-a740138969dc" />
 
 # References
 
@@ -66,7 +66,7 @@ model = generator.create()
 
 ### Usage of terraced_terrain_editor.py
 
-Run terraced_terrain_editor.py and select the terrain type, noise and theme. 
+Run terraced_terrain_editor.py and select the terrain type(Flat or Sphere), noise and theme. 
 If you want to change the parameters, edit the values in the entry boxes and click the [Reflet Changes] button.
 
 ```
