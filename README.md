@@ -19,16 +19,17 @@ The meandering triangles algorithm is based on below:
   
 # Requirements
 
-* Panda3D 1.10.15
-* numpy 2.2.4
-* Cython 3.0.12
-* opencv-contrib-python 4.11.0.88
-* opencv-python 4.11.0.88
+* Panda3D 1.10.16
+* numpy 2.2.6
+* Cython 3.2.3
+* opencv-contrib-python 4.12.0.88
+* opencv-python 4.12.0.88
   
 # Environment
 
 * Python 3.13
 * Windows11
+* Ubuntu 24.04.3
 
 # Usage
 
